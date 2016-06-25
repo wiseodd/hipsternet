@@ -7,8 +7,10 @@ Note, things will be added over time, so not all the hipsterest things will be h
 
 1. Install miniconda <http://conda.pydata.org/miniconda.html>
 2. Do `conda env create`
+3. Enter the env `source activate neuralnet`
 3. Do things with the code if you want to
-4. Just do `python run.py`
+4. Run `python run.py`
+5. Just close the terminal if you done (or `source deactivate`, not a fan though)
 
 ## What can I do with this?
 
