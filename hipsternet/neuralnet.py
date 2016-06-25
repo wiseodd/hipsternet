@@ -1,6 +1,5 @@
 import numpy as np
-import input_data
-import loss
+import hipsternet.loss as loss
 
 
 def make_network(D, C, H=100):

@@ -1,5 +1,5 @@
 import numpy as np
-import neuralnet as nn
+import hipsternet.neuralnet as nn
 
 
 eps = 1e-8

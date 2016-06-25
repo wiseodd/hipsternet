@@ -1,7 +1,7 @@
 import numpy as np
-import input_data
-import neuralnet as nn
-import optimization as optim
+import hipsternet.input_data as input_data
+import hipsternet.neuralnet as nn
+import hipsternet.optimization as optim
 
 
 n_iter = 2000

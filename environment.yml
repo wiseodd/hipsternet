@@ -1,4 +1,4 @@
-name: neuralnet
+name: hipsternet
 dependencies:
 - python=3.5.1
 - numpy=1.11.0

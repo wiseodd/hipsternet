@@ -1,5 +1,5 @@
-# Hipster Neural Net
-All the hipster things in Neural Net in a single repo: hipster optimization algorithms, hispter regularization, everything!
+# hipsternet
+All the hipster things in Neural Net in a single repo: hipster optimization algorithms, hispter regularizations, everything!
 
 Note, things will be added over time, so not all the hipsterest things will be here immediately. Also don't use this for your production code: use this to study and learn new things in the realm of Neural Net, Deep Net, Deep Learning, whatever.
 
@@ -29,7 +29,7 @@ Note, things will be added over time, so not all the hipsterest things will be h
 
 1. Install miniconda <http://conda.pydata.org/miniconda.html>
 2. Do `conda env create`
-3. Enter the env `source activate neuralnet`
+3. Enter the env `source activate hipsternet`
 3. Do things with the code if you want to
 4. Run `python run.py`
 5. Just close the terminal if you done (or `source deactivate`, not a fan though)
