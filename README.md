@@ -1,7 +1,29 @@
 # Hipster Neural Net
 All the hipster things in Neural Net in a single repo: hipster optimization algorithms, hispter regularization, everything!
 
-Note, things will be added over time, so not all the hipsterest things will be here immediately.
+Note, things will be added over time, so not all the hipsterest things will be here immediately. Also don't use this for your production code: use this to study and learn new things in the realm of Neural Net, Deep Net, Deep Learning, whatever.
+
+## What's in it?
+
+#### Optimization algorithms
+
+1. SGD
+2. Momentum SGD
+3. Nesterov Momentum
+4. Adagrad
+5. RMSprop
+6. Adam
+
+#### Regularization
+
+1. Dropout
+2. Your usual L2 regularization
+
+#### Hipster Technique
+
+1. BatchNorm
+2. Xavier weight initialization
+
 
 ## How to run this?
 
