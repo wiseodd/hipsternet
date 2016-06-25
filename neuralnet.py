@@ -1,16 +1,16 @@
 import numpy as np
 import input_data
+import loss
 
 
 def make_network(D, C, H=100):
-    W1_size = D * H
-    W2_size = H * C
-
     model = dict(
         W1=np.random.randn(D, H) / np.sqrt(D / 2.),
-        W2=np.random.randn(H, C) / np.sqrt(H / 2.),
+        W2=np.random.randn(H, H) / np.sqrt(H / 2.),
+        W3=np.random.randn(H, C) / np.sqrt(H / 2.),
         b1=np.zeros((1, H)),
-        b2=np.zeros((1, C))
+        b2=np.zeros((1, H)),
+        b3=np.zeros((1, C))
     )
 
     return model
@@ -23,40 +23,36 @@ def softmax(x):
 
 def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
     """
-    Single training step over minibatch: forward-loss-backprop
+    Single training step over minibatch: forward, loss, backprop
     """
 
     m = X_train.shape[0]
-    W1, W2, b1, b2 = model['W1'], model['W2'], model['b1'], model['b2']
+    W1, W2, W3 = model['W1'], model['W2'], model['W3']
+    b1, b2, b3 = model['b1'], model['b2'], model['b3']
 
     """
     Forward pass
     """
 
     # Input to hidden
-    h = X_train @ W1 + b1
-    h[h < 0] = 0
+    h1 = X_train @ W1 + b1
+    h1[h1 < 0] = 0
 
     # Dropout
-    dropout_mask = np.random.rand(*h.shape) < p_dropout
-    h = h * dropout_mask / p_dropout
+    u1 = np.random.rand(*h1.shape) < p_dropout
+    h1 *= u1 / p_dropout
+
+    # Hidden to hidden
+    h2 = h1 @ W2 + b2
+    h2[h2 < 0] = 0
+
+    # Dropout
+    u2 = np.random.rand(*h2.shape) < p_dropout
+    h2 *= u2 / p_dropout
 
     # Hidden to output
-    score = h @ W2 + b2
+    score = h2 @ W3 + b3
     prob = softmax(score)
-
-    """
-    Compute loss
-    """
-
-    log_like = -np.log(prob[range(m), y_train])
-    data_loss = np.sum(log_like) / m
-
-    reg_loss = 0.
-    reg_loss += .5 * lam * np.sum(W1 * W1)
-    reg_loss += .5 * lam * np.sum(W2 * W2)
-
-    loss = data_loss + reg_loss
 
     """
     Backprop
@@ -67,41 +63,66 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
     grad_y[range(m), y_train] -= 1.
     grad_y /= m
 
+    # W3
+    dW3 = h2.T @ grad_y
+    dW3 += lam * W3
+
+    # b3
+    db3 = np.sum(grad_y, axis=0)
+
+    # h2
+    dh2 = grad_y @ W3.T
+
+    # Dropout h2
+    dh2 *= u2 / p_dropout
+
+    # ReLU
+    dh2[h2 <= 0] = 0
+
     # W2
-    dW2 = h.T @ grad_y
+    dW2 = h1.T @ dh2
     dW2 += lam * W2
 
     # b2
-    db2 = np.sum(grad_y, axis=0)
+    db2 = np.sum(dh2, axis=0)
 
-    # h
-    dh = grad_y @ W2.T
+    # h1
+    dh1 = dh2 @ W2.T
 
-    # Dropout
-    dh = dh * dropout_mask / p_dropout
+    # Dropout h1
+    dh1 *= u1 / p_dropout
 
     # ReLU
-    dh[h <= 0] = 0
+    dh1[h1 <= 0] = 0
 
     # W1
-    dW1 = X_train.T @ dh
+    dW1 = X_train.T @ dh1
     dW1 += lam * W1
 
     # b1
-    db1 = np.sum(dh, axis=0)
+    db1 = np.sum(dh1, axis=0)
 
-    model_grad = dict(W1=dW1, W2=dW2, b1=db1, b2=db2)
+    model_grad = dict(W1=dW1, W2=dW2, W3=dW3, b1=db1, b2=db2, b3=db3)
+    cost = loss.cross_entropy(prob, y_train, model, lam)
 
-    return model_grad, loss
+    return model_grad, cost
 
 
 def predict_proba(X, model):
+    W1, W2, W3 = model['W1'], model['W2'], model['W3']
+    b1, b2, b3 = model['b1'], model['b2'], model['b3']
+
     # Input to hidden
-    h = X @ model['W1'] + model['b1']
-    h[h < 0] = 0
+    h1 = X @ W1 + b1
+    h1[h1 < 0] = 0
+
+    # Hidden to hidden
+    h2 = h1 @ W2 + b2
+    h2[h2 < 0] = 0
 
     # Hidden to output
-    prob = softmax(h @ model['W2'] + model['b2'])
+    score = h2 @ W3 + b3
+    prob = softmax(score)
 
     return prob
 

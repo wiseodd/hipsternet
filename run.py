@@ -4,7 +4,7 @@ import neuralnet as nn
 import optimization as optim
 
 
-n_iter = 1000
+n_iter = 2000
 alpha = 1e-3
 mb_size = 256
 n_experiment = 1
@@ -43,7 +43,7 @@ if __name__ == '__main__':
             print('Experiment-{}'.format(k))
 
             # Reset model
-            model = nn.make_network(D, C, H=100)
+            model = nn.make_network(D, C, H=1024)
 
             model = algo(
                 model, X_train, y_train, mb_size=mb_size, alpha=alpha, n_iter=n_iter, print_after=print_after
