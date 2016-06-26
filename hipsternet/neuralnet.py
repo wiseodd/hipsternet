@@ -38,16 +38,16 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
     h1[h1 < 0] = 0
 
     # Dropout
-    u1 = np.random.rand(*h1.shape) < p_dropout
-    h1 *= u1 / p_dropout
+    u1 = np.random.binomial(1, p_dropout, size=h1.shape) / p_dropout
+    h1 *= u1
 
     # Hidden to hidden
     h2 = h1 @ W2 + b2
     h2[h2 < 0] = 0
 
     # Dropout
-    u2 = np.random.rand(*h2.shape) < p_dropout
-    h2 *= u2 / p_dropout
+    u2 = np.random.binomial(1, p_dropout, size=h2.shape) / p_dropout
+    h2 *= u2
 
     # Hidden to output
     score = h2 @ W3 + b3
@@ -72,11 +72,11 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
     # h2
     dh2 = grad_y @ W3.T
 
-    # Dropout h2
-    dh2 *= u2 / p_dropout
-
     # ReLU
     dh2[h2 <= 0] = 0
+
+    # Dropout h2
+    dh2 *= u2
 
     # W2
     dW2 = h1.T @ dh2
@@ -88,11 +88,11 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
     # h1
     dh1 = dh2 @ W2.T
 
-    # Dropout h1
-    dh1 *= u1 / p_dropout
-
     # ReLU
     dh1[h1 <= 0] = 0
+
+    # Dropout h1
+    dh1 *= u1
 
     # W1
     dW1 = X_train.T @ dh1
