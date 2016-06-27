@@ -33,25 +33,8 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
     Forward pass
     """
 
-    # Input to hidden
-    h1 = X_train @ W1 + b1
-    h1[h1 < 0] = 0
-
-    # Dropout
-    u1 = np.random.binomial(1, p_dropout, size=h1.shape) / p_dropout
-    h1 *= u1
-
-    # Hidden to hidden
-    h2 = h1 @ W2 + b2
-    h2[h2 < 0] = 0
-
-    # Dropout
-    u2 = np.random.binomial(1, p_dropout, size=h2.shape) / p_dropout
-    h2 *= u2
-
-    # Hidden to output
-    score = h2 @ W3 + b3
-    prob = softmax(score)
+    prob, hiddens = _predict_proba(X_train, model, train=True, p_dropout=p_dropout)
+    h1, h2, u1, u2 = hiddens
 
     """
     Backprop
@@ -107,22 +90,41 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
     return model_grad, cost
 
 
-def predict_proba(X, model):
+def _predict_proba(X, model, train=False, p_dropout=.5):
+    m = X.shape[0]
+
     W1, W2, W3 = model['W1'], model['W2'], model['W3']
     b1, b2, b3 = model['b1'], model['b2'], model['b3']
+
+    u1, u2 = None, None
 
     # Input to hidden
     h1 = X @ W1 + b1
     h1[h1 < 0] = 0
 
+    if train:
+        # Dropout
+        u1 = np.random.binomial(1, p_dropout, size=h1.shape) / p_dropout
+        h1 *= u1
+
     # Hidden to hidden
     h2 = h1 @ W2 + b2
     h2[h2 < 0] = 0
+
+    if train:
+        # Dropout
+        u2 = np.random.binomial(1, p_dropout, size=h2.shape) / p_dropout
+        h2 *= u2
 
     # Hidden to output
     score = h2 @ W3 + b3
     prob = softmax(score)
 
+    return prob, (h1, h2, u1, u2)
+
+
+def predict_proba(X, model):
+    prob, _ = _predict_proba(X, model, False)
     return prob
 
 
