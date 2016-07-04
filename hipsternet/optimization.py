@@ -36,7 +36,7 @@ def sgd(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_aft
         grad, loss = nn.train_step(model, X_mini, y_mini)
 
         for layer in grad:
-            model[layer] -= alpha * grad[layer]
+            model['net_params'][layer] -= alpha * grad[layer]
 
         if iter % print_after == 0:
             print('Iter-{} loss: {}'.format(iter, loss))
@@ -45,7 +45,7 @@ def sgd(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_aft
 
 
 def momentum(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
-    velocity = {k: np.zeros_like(v) for k, v in model.items()}
+    velocity = {k: np.zeros_like(v) for k, v in model['net_params'].items()}
     gamma = .9
 
     minibatches = get_minibatch(X_train, y_train, mb_size)
@@ -58,7 +58,7 @@ def momentum(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, prin
 
         for layer in grad:
             velocity[layer] = gamma * velocity[layer] + alpha * grad[layer]
-            model[layer] -= velocity[layer]
+            model['net_params'][layer] -= velocity[layer]
 
         if iter % print_after == 0:
             print('Iter-{} loss: {}'.format(iter, loss))
@@ -67,7 +67,7 @@ def momentum(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, prin
 
 
 def nesterov(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
-    velocity = {k: np.zeros_like(v) for k, v in model.items()}
+    velocity = {k: np.zeros_like(v) for k, v in model['net_params'].items()}
     gamma = .9
 
     minibatches = get_minibatch(X_train, y_train, mb_size)
@@ -76,12 +76,13 @@ def nesterov(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, prin
         idx = np.random.randint(0, len(minibatches))
         X_mini, y_mini = minibatches[idx]
 
-        model_ahead = {k: v + gamma * velocity[k] for k, v in model.items()}
+        model_ahead_net = {k: v + gamma * velocity[k] for k, v in model['net_params'].items()}
+        model_ahead = {'net_params': model_ahead_net, 'etc_params': model['etc_params'].copy()}
         grad, loss = nn.train_step(model_ahead, X_mini, y_mini)
 
         for layer in grad:
             velocity[layer] = gamma * velocity[layer] + alpha * grad[layer]
-            model[layer] -= velocity[layer]
+            model['net_params'][layer] -= velocity[layer]
 
         if iter % print_after == 0:
             print('Iter-{} loss: {}'.format(iter, loss))
@@ -90,7 +91,7 @@ def nesterov(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, prin
 
 
 def adagrad(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
-    cache = {k: np.zeros_like(v) for k, v in model.items()}
+    cache = {k: np.zeros_like(v) for k, v in model['net_params'].items()}
 
     minibatches = get_minibatch(X_train, y_train, mb_size)
 
@@ -102,7 +103,7 @@ def adagrad(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print
 
         for k in grad:
             cache[k] += grad[k]**2
-            model[k] -= alpha * grad[k] / (np.sqrt(cache[k]) + eps)
+            model['net_params'][k] -= alpha * grad[k] / (np.sqrt(cache[k]) + eps)
 
         if iter % print_after == 0:
             print('Iter-{} loss: {}'.format(iter, loss))
@@ -111,7 +112,7 @@ def adagrad(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print
 
 
 def rmsprop(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
-    cache = {k: np.zeros_like(v) for k, v in model.items()}
+    cache = {k: np.zeros_like(v) for k, v in model['net_params'].items()}
     gamma = .9
 
     minibatches = get_minibatch(X_train, y_train, mb_size)
@@ -124,7 +125,7 @@ def rmsprop(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print
 
         for k in grad:
             cache[k] = gamma * cache[k] + (1 - gamma) * (grad[k]**2)
-            model[k] -= alpha * grad[k] / (np.sqrt(cache[k]) + eps)
+            model['net_params'][k] -= alpha * grad[k] / (np.sqrt(cache[k]) + eps)
 
         if iter % print_after == 0:
             print('Iter-{} loss: {}'.format(iter, loss))
@@ -133,8 +134,8 @@ def rmsprop(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print
 
 
 def adam(model, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
-    M = {k: np.zeros_like(v) for k, v in model.items()}
-    R = {k: np.zeros_like(v) for k, v in model.items()}
+    M = {k: np.zeros_like(v) for k, v in model['net_params'].items()}
+    R = {k: np.zeros_like(v) for k, v in model['net_params'].items()}
     beta1 = .9
     beta2 = .999
 
@@ -154,7 +155,7 @@ def adam(model, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_a
             m_k_hat = M[k] / (1. - beta1**(t))
             r_k_hat = R[k] / (1. - beta2**(t))
 
-            model[k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + eps)
+            model['net_params'][k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + eps)
 
         if iter % print_after == 0:
             print('Iter-{} loss: {}'.format(iter, loss))
