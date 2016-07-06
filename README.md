@@ -14,12 +14,17 @@ Note, things will be added over time, so not all the hipsterest things will be h
 5. RMSprop
 6. Adam
 
+#### Loss functions
+
+1. Cross Entropy
+2. Hinge Loss
+
 #### Regularization
 
 1. Dropout
 2. Your usual L1 and L2 regularization
 
-#### Hipster Technique
+#### Hipster techniques
 
 1. BatchNorm
 2. Xavier weight initialization
