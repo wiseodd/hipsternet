@@ -77,7 +77,7 @@ def nesterov(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, prin
         X_mini, y_mini = minibatches[idx]
 
         model_ahead_net = {k: v + gamma * velocity[k] for k, v in model['net_params'].items()}
-        model_ahead = {'net_params': model_ahead_net, 'etc_params': model['etc_params'].copy()}
+        model_ahead = {'net_params': model_ahead_net, 'caches': model['caches'].copy()}
         grad, loss = nn.train_step(model_ahead, X_mini, y_mini)
 
         for layer in grad:

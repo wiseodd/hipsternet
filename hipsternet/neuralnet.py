@@ -16,7 +16,7 @@ def make_network(D, C, H=100):
             beta1=np.zeros((1, H)),
             beta2=np.zeros((1, H))
         ),
-        etc_params=dict(
+        caches=dict(
             bn1_mean=np.zeros((1, H)),
             bn2_mean=np.zeros((1, H)),
             bn1_var=np.zeros((1, H)),
@@ -148,7 +148,7 @@ def _predict_proba(X, model, train=False, p_dropout=.5):
     m = X.shape[0]
 
     params = model['net_params']
-    bn_params = model['etc_params']
+    bn_params = model['caches']
 
     W1, W2, W3 = params['W1'], params['W2'], params['W3']
     b1, b2, b3 = params['b1'], params['b2'], params['b3']
