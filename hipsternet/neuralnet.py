@@ -1,5 +1,6 @@
 import numpy as np
 import hipsternet.loss as loss
+import hipsternet.regularization as reg
 
 
 def make_network(D, C, H=100):
@@ -91,7 +92,7 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
 
     # W3
     dW3 = h2.T @ grad_y
-    dW3 += lam * W3
+    dW3 += reg.dl2_reg(W3, lam)
 
     # b3
     db3 = np.sum(grad_y, axis=0)
@@ -110,7 +111,7 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
 
     # W2
     dW2 = h1.T @ dh2
-    dW2 += lam * W2
+    dW2 += reg.dl2_reg(W2, lam)
 
     # b2
     db2 = np.sum(dh2, axis=0)
@@ -129,7 +130,7 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
 
     # W1
     dW1 = X_train.T @ dh1
-    dW1 += lam * W1
+    dW1 += reg.dl2_reg(W1, lam)
 
     # b1
     db1 = np.sum(dh1, axis=0)
