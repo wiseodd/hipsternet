@@ -17,7 +17,7 @@ Note, things will be added over time, so not all the hipsterest things will be h
 #### Regularization
 
 1. Dropout
-2. Your usual L2 regularization
+2. Your usual L1 and L2 regularization
 
 #### Hipster Technique
 
