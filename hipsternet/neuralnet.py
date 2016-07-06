@@ -1,5 +1,5 @@
 import numpy as np
-import hipsternet.loss as loss
+import hipsternet.loss as loss_fun
 import hipsternet.regularization as reg
 
 
@@ -26,11 +26,6 @@ def make_network(D, C, H=100):
     )
 
     return model
-
-
-def softmax(x):
-    e_x = np.exp((x.T - np.max(x, axis=1)).T)
-    return (e_x.T / e_x.sum(axis=1)).T
 
 
 def batchnorm_forward(X, gamma, beta):
@@ -64,7 +59,7 @@ def batchnorm_backward(dout, cache):
     return dX, dgamma, dbeta
 
 
-def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
+def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5, loss='cross_entropy'):
     """
     Single training step over minibatch: forward, loss, backprop
     """
@@ -79,16 +74,17 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
     """
     Forward pass
     """
-    prob, hiddens = _predict_proba(X_train, model, train=True, p_dropout=p_dropout)
+    y_pred, hiddens = forward(X_train, model, train=True, p_dropout=p_dropout)
     h1, h2, u1, u2, bn1_cache, bn2_cache = hiddens
 
     """
     Backprop
     """
-    # Softmax layer
-    grad_y = prob.copy()
-    grad_y[range(m), y_train] -= 1.
-    grad_y /= m
+    # Output layer
+    if loss == 'cross_entropy':
+        grad_y = loss_fun.dcross_entropy(y_pred, y_train)
+    elif loss == 'hinge':
+        grad_y = loss_fun.dhinge_loss(y_pred, y_train)
 
     # W3
     dW3 = h2.T @ grad_y
@@ -140,12 +136,15 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5):
         gamma2=dgamma2, beta1=dbeta1, beta2=dbeta2
     )
 
-    cost = loss.cross_entropy(prob, y_train, params, lam)
+    if loss == 'cross_entropy':
+        cost = loss_fun.cross_entropy(y_pred, y_train, params, lam)
+    elif loss == 'hinge':
+        cost = loss_fun.hinge_loss(y_pred, y_train, params)
 
     return model_grad, cost
 
 
-def _predict_proba(X, model, train=False, p_dropout=.5):
+def forward(X, model, train=False, p_dropout=.5):
     m = X.shape[0]
 
     params = model['net_params']
@@ -203,16 +202,15 @@ def _predict_proba(X, model, train=False, p_dropout=.5):
 
     # Hidden to output
     score = h2 @ W3 + b3
-    prob = softmax(score)
 
     if train:
-        return prob, (h1, h2, u1, u2, bn1_cache, bn2_cache)
+        return score, (h1, h2, u1, u2, bn1_cache, bn2_cache)
     else:
-        return prob
+        return score
 
 
 def predict_proba(X, model):
-    prob = _predict_proba(X, model, False)
+    prob = forward(X, model, False)
     return prob
 
 
