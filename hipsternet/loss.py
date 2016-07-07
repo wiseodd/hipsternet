@@ -2,7 +2,7 @@ import numpy as np
 import hipsternet.regularization as reg
 
 
-def cross_entropy(y_pred, y_train, model, lam=1e-3):
+def cross_entropy(model, y_pred, y_train, lam=1e-3):
     m = y_pred.shape[0]
 
     prob = softmax(y_pred)
@@ -28,7 +28,7 @@ def dcross_entropy(y_pred, y_train):
     return grad_y
 
 
-def hinge_loss(y_pred, y_train, model, lam=1e-3, delta=1):
+def hinge_loss(model, y_pred, y_train, lam=1e-3, delta=1):
     m = y_pred.shape[0]
 
     margins = (y_pred.T - y_pred[range(m), y_train]).T + delta

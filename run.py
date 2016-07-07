@@ -1,7 +1,7 @@
 import numpy as np
 import hipsternet.input_data as input_data
-import hipsternet.neuralnet as nn
-import hipsternet.optimization as optim
+import hipsternet.solver as solver
+from hipsternet.neuralnet import NeuralNet
 
 
 n_iter = 2000
@@ -10,6 +10,8 @@ mb_size = 100
 n_experiment = 1
 reg = 1e-3
 print_after = 100
+p_dropout = 0.8
+loss = 'cross_ent'
 
 
 if __name__ == '__main__':
@@ -25,35 +27,35 @@ if __name__ == '__main__':
     X_train = X_train - X_mean
     X_test = X_test - X_mean
 
-    algos = dict(
-        sgd=optim.sgd,
-        momentum=optim.momentum,
-        nesterov=optim.nesterov,
-        adagrad=optim.adagrad,
-        rmsprop=optim.rmsprop,
-        adam=optim.adam
+    solvers = dict(
+        sgd=solver.sgd,
+        momentum=solver.momentum,
+        nesterov=solver.nesterov,
+        adagrad=solver.adagrad,
+        rmsprop=solver.rmsprop,
+        adam=solver.adam
     )
 
-    algo_accs = {k: np.zeros(n_experiment) for k in algos}
+    solver_accs = {k: np.zeros(n_experiment) for k in solvers}
 
-    for algo_name, algo in algos.items():
-        print('Experimenting on {}'.format(algo_name))
+    for solver_name, solver_fun in solvers.items():
+        print('Experimenting on {}'.format(solver_name))
 
         for k in range(n_experiment):
             print('Experiment-{}'.format(k))
 
             # Reset model
-            model = nn.make_network(D, C, H=128)
+            nn = NeuralNet(D, C, H=128, lam=reg, p_dropout=p_dropout, loss=loss)
 
-            model = algo(
-                model, X_train, y_train, mb_size=mb_size, alpha=alpha, n_iter=n_iter, print_after=print_after
+            nn = solver_fun(
+                nn, X_train, y_train, mb_size=mb_size, alpha=alpha, n_iter=n_iter, print_after=print_after
             )
 
-            y_pred = nn.predict(X_test, model)
+            y_pred = nn.predict(X_test)
 
-            algo_accs[algo_name][k] = np.mean(y_pred == y_test)
+            solver_accs[solver_name][k] = np.mean(y_pred == y_test)
 
     print()
 
-    for k, v in algo_accs.items():
+    for k, v in solver_accs.items():
         print('{} => mean accuracy: {:.4f}, std: {:.4f}'.format(k, v.mean(), v.std()))
