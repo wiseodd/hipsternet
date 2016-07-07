@@ -1,16 +1,23 @@
 import numpy as np
+import hipsternet.utils as util
+import hipsternet.constant as c
 
 
-def batchnorm_forward(X, gamma, beta):
+def batchnorm_forward(X, gamma, beta, cache, momentum=.9):
+    running_mean, running_var = cache
+
     mu = np.mean(X, axis=0)
     var = np.var(X, axis=0)
 
-    X_norm = (X - mu) / np.sqrt(var + 1e-8)
+    X_norm = (X - mu) / np.sqrt(var + c.eps)
     out = gamma * X_norm + beta
 
     cache = (X, X_norm, mu, var, gamma, beta)
 
-    return out, cache, mu, var
+    running_mean = util.exp_running_avg(running_mean, mu, momentum)
+    running_var = util.exp_running_avg(running_var, var, momentum)
+
+    return out, cache, running_mean, running_var
 
 
 def batchnorm_backward(dout, cache):
@@ -19,7 +26,7 @@ def batchnorm_backward(dout, cache):
     N, D = X.shape
 
     X_mu = X - mu
-    std_inv = 1. / np.sqrt(var + 1e-8)
+    std_inv = 1. / np.sqrt(var + c.eps)
 
     dX_norm = dout * gamma
     dvar = np.sum(dX_norm * X_mu, axis=0) * -.5 * std_inv**3

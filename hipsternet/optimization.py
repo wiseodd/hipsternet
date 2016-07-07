@@ -1,8 +1,7 @@
 import numpy as np
 import hipsternet.neuralnet as nn
-
-
-eps = 1e-8
+import hipsternet.utils as util
+import hipsternet.constant as c
 
 
 def shuffle(X, y):
@@ -103,7 +102,7 @@ def adagrad(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print
 
         for k in grad:
             cache[k] += grad[k]**2
-            model['net_params'][k] -= alpha * grad[k] / (np.sqrt(cache[k]) + eps)
+            model['net_params'][k] -= alpha * grad[k] / (np.sqrt(cache[k]) + c.eps)
 
         if iter % print_after == 0:
             print('Iter-{} loss: {}'.format(iter, loss))
@@ -124,8 +123,8 @@ def rmsprop(model, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print
         grad, loss = nn.train_step(model, X_mini, y_mini)
 
         for k in grad:
-            cache[k] = gamma * cache[k] + (1 - gamma) * (grad[k]**2)
-            model['net_params'][k] -= alpha * grad[k] / (np.sqrt(cache[k]) + eps)
+            cache[k] = util.exp_running_avg(cache[k], grad[k]**2, gamma)
+            model['net_params'][k] -= alpha * grad[k] / (np.sqrt(cache[k]) + c.eps)
 
         if iter % print_after == 0:
             print('Iter-{} loss: {}'.format(iter, loss))
@@ -149,13 +148,13 @@ def adam(model, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_a
         grad, loss = nn.train_step(model, X_mini, y_mini)
 
         for k in grad:
-            M[k] = beta1 * M[k] + (1. - beta1) * grad[k]
-            R[k] = beta2 * R[k] + (1. - beta2) * grad[k]**2
+            M[k] = util.exp_running_avg(M[k], grad[k], beta1)
+            R[k] = util.exp_running_avg(R[k], grad[k]**2, beta2)
 
             m_k_hat = M[k] / (1. - beta1**(t))
             r_k_hat = R[k] / (1. - beta2**(t))
 
-            model['net_params'][k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + eps)
+            model['net_params'][k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + c.eps)
 
         if iter % print_after == 0:
             print('Iter-{} loss: {}'.format(iter, loss))

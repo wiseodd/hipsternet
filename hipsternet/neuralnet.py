@@ -1,7 +1,8 @@
 import numpy as np
 import hipsternet.loss as loss_fun
 import hipsternet.regularization as reg
-import hipsternet.layer as layer
+import hipsternet.layer as l
+import hipsternet.constant as c
 
 
 def make_network(D, C, H=100):
@@ -73,7 +74,7 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.8, loss='cross_entr
     dh2 *= u2
 
     # BatchNorm
-    dh2, dgamma2, dbeta2 = layer.batchnorm_backward(dh2, bn2_cache)
+    dh2, dgamma2, dbeta2 = l.batchnorm_backward(dh2, bn2_cache)
 
     # W2
     dW2 = h1.T @ dh2
@@ -92,7 +93,7 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.8, loss='cross_entr
     dh1 *= u1
 
     # BatchNorm
-    dh1, dgamma1, dbeta1 = layer.batchnorm_backward(dh2, bn2_cache)
+    dh1, dgamma1, dbeta1 = l.batchnorm_backward(dh2, bn2_cache)
 
     # W1
     dW1 = X_train.T @ dh1
@@ -135,11 +136,10 @@ def forward(X, model, train=False, p_dropout=.5):
 
     # BatchNorm
     if train:
-        h1, bn1_cache, mu, var = layer.batchnorm_forward(h1, gamma1, beta1)
-        bn_params['bn1_mean'] = .9 * bn_params['bn1_mean'] + .1 * mu
-        bn_params['bn1_var'] = .9 * bn_params['bn1_var'] + .1 * var
+        h1, bn1_cache, run_mean, run_var = l.batchnorm_forward(h1, gamma1, beta1, (bn1_mean, bn1_var))
+        bn_params['bn1_mean'], bn_params['bn1_var'] = run_mean, run_var
     else:
-        h1 = (h1 - bn_params['bn1_mean']) / np.sqrt(bn_params['bn1_var'] + 1e-8)
+        h1 = (h1 - bn1_mean) / np.sqrt(bn1_var + c.eps)
         h1 = gamma1 * h1 + beta1
 
     # ReLU
@@ -155,11 +155,10 @@ def forward(X, model, train=False, p_dropout=.5):
 
     # BatchNorm
     if train:
-        h2, bn2_cache, mu, var = layer.batchnorm_forward(h2, gamma2, beta2)
-        bn_params['bn2_mean'] = .9 * bn_params['bn2_mean'] + .1 * mu
-        bn_params['bn2_var'] = .9 * bn_params['bn2_var'] + .1 * var
+        h2, bn2_cache, run_mean, run_var = l.batchnorm_forward(h2, gamma2, beta2, (bn2_mean, bn2_var))
+        bn_params['bn2_mean'], bn_params['bn2_var'] = run_mean, run_var
     else:
-        h2 = (h2 - bn_params['bn2_mean']) / np.sqrt(bn_params['bn2_var'] + 1e-8)
+        h2 = (h2 - bn2_mean) / np.sqrt(bn2_var + c.eps)
         h2 = gamma2 * h2 + beta2
 
     # ReLU

@@ -1,4 +1,5 @@
 import numpy as np
+import hipsternet.constant as c
 
 
 def l2_reg(W, lam=1e-3):
@@ -14,4 +15,4 @@ def dl2_reg(W, lam=1e-3):
 
 
 def dl1_reg(W, lam=1e-3):
-    return lam * W / (np.abs(W) + 1e-8)
+    return lam * W / (np.abs(W) + c.eps)
