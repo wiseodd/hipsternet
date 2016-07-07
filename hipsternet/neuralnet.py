@@ -1,6 +1,7 @@
 import numpy as np
 import hipsternet.loss as loss_fun
 import hipsternet.regularization as reg
+import hipsternet.layer as layer
 
 
 def make_network(D, C, H=100):
@@ -28,38 +29,7 @@ def make_network(D, C, H=100):
     return model
 
 
-def batchnorm_forward(X, gamma, beta):
-    mu = np.mean(X, axis=0)
-    var = np.var(X, axis=0)
-
-    X_norm = (X - mu) / np.sqrt(var + 1e-8)
-    out = gamma * X_norm + beta
-
-    cache = (X, X_norm, mu, var, gamma, beta)
-
-    return out, cache, mu, var
-
-
-def batchnorm_backward(dout, cache):
-    X, X_norm, mu, var, gamma, beta = cache
-
-    N, D = X.shape
-
-    X_mu = X - mu
-    std_inv = 1. / np.sqrt(var + 1e-8)
-
-    dX_norm = dout * gamma
-    dvar = np.sum(dX_norm * X_mu, axis=0) * -.5 * std_inv**3
-    dmu = np.sum(dX_norm * -std_inv, axis=0) + dvar * np.mean(-2. * X_mu, axis=0)
-
-    dX = (dX_norm * std_inv) + (dvar * 2 * X_mu / N) + (dmu / N)
-    dgamma = np.sum(dout * X_norm, axis=0)
-    dbeta = np.sum(dout, axis=0)
-
-    return dX, dgamma, dbeta
-
-
-def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5, loss='cross_entropy'):
+def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.8, loss='cross_entropy'):
     """
     Single training step over minibatch: forward, loss, backprop
     """
@@ -103,7 +73,7 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5, loss='cross_entr
     dh2 *= u2
 
     # BatchNorm
-    dh2, dgamma2, dbeta2 = batchnorm_backward(dh2, bn2_cache)
+    dh2, dgamma2, dbeta2 = layer.batchnorm_backward(dh2, bn2_cache)
 
     # W2
     dW2 = h1.T @ dh2
@@ -122,7 +92,7 @@ def train_step(model, X_train, y_train, lam=1e-3, p_dropout=.5, loss='cross_entr
     dh1 *= u1
 
     # BatchNorm
-    dh1, dgamma1, dbeta1 = batchnorm_backward(dh2, bn2_cache)
+    dh1, dgamma1, dbeta1 = layer.batchnorm_backward(dh2, bn2_cache)
 
     # W1
     dW1 = X_train.T @ dh1
@@ -165,7 +135,7 @@ def forward(X, model, train=False, p_dropout=.5):
 
     # BatchNorm
     if train:
-        h1, bn1_cache, mu, var = batchnorm_forward(h1, gamma1, beta1)
+        h1, bn1_cache, mu, var = layer.batchnorm_forward(h1, gamma1, beta1)
         bn_params['bn1_mean'] = .9 * bn_params['bn1_mean'] + .1 * mu
         bn_params['bn1_var'] = .9 * bn_params['bn1_var'] + .1 * var
     else:
@@ -185,7 +155,7 @@ def forward(X, model, train=False, p_dropout=.5):
 
     # BatchNorm
     if train:
-        h2, bn2_cache, mu, var = batchnorm_forward(h2, gamma2, beta2)
+        h2, bn2_cache, mu, var = layer.batchnorm_forward(h2, gamma2, beta2)
         bn_params['bn2_mean'] = .9 * bn_params['bn2_mean'] + .1 * mu
         bn_params['bn2_var'] = .9 * bn_params['bn2_var'] + .1 * var
     else:
