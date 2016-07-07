@@ -21,83 +21,16 @@ class NeuralNet(object):
         """
         Single training step over minibatch: forward, loss, backprop
         """
-        m = X_train.shape[0]
-        W1, W2, W3 = self.model['W1'], self.model['W2'], self.model['W3']
-        b1, b2, b3 = self.model['b1'], self.model['b2'], self.model['b3']
-        gamma1, gamma2 = self.model['gamma1'], self.model['gamma2']
-        beta1, beta2 = self.model['beta1'], self.model['beta2']
-
-        """
-        Forward pass
-        """
-        y_pred, hiddens = self.forward(X_train, train=True)
-        h1, h2, u1, u2, bn1_cache, bn2_cache = hiddens
-
-        """
-        Backprop
-        """
-        # Output layer
-        if self.loss == 'cross_ent':
-            grad_y = loss_fun.dcross_entropy(y_pred, y_train)
-        elif self.loss == 'hinge':
-            grad_y = loss_fun.dhinge_loss(y_pred, y_train)
-
-        # W3
-        dW3 = h2.T @ grad_y
-        dW3 += reg.dl2_reg(W3, self.lam)
-
-        # b3
-        db3 = np.sum(grad_y, axis=0)
-
-        # h2
-        dh2 = grad_y @ W3.T
-
-        # ReLU
-        dh2[h2 <= 0] = 0
-
-        # Dropout h2
-        dh2 *= u2
-
-        # BatchNorm
-        dh2, dgamma2, dbeta2 = l.batchnorm_backward(dh2, bn2_cache)
-
-        # W2
-        dW2 = h1.T @ dh2
-        dW2 += reg.dl2_reg(W2, self.lam)
-
-        # b2
-        db2 = np.sum(dh2, axis=0)
-
-        # h1
-        dh1 = dh2 @ W2.T
-
-        # ReLU
-        dh1[h1 <= 0] = 0
-
-        # Dropout h1
-        dh1 *= u1
-
-        # BatchNorm
-        dh1, dgamma1, dbeta1 = l.batchnorm_backward(dh2, bn2_cache)
-
-        # W1
-        dW1 = X_train.T @ dh1
-        dW1 += reg.dl2_reg(W1, self.lam)
-
-        # b1
-        db1 = np.sum(dh1, axis=0)
-
-        model_grad = dict(
-            W1=dW1, W2=dW2, W3=dW3, b1=db1, b2=db2, b3=db3, gamma1=dgamma1,
-            gamma2=dgamma2, beta1=dbeta1, beta2=dbeta2
-        )
+        y_pred, cache = self.forward(X_train, train=True)
 
         if self.loss == 'cross_ent':
-            cost = loss_fun.cross_entropy(self.model, y_pred, y_train, self.lam)
+            loss = loss_fun.cross_entropy(self.model, y_pred, y_train, self.lam)
         elif self.loss == 'hinge':
-            cost = loss_fun.hinge_loss(self.model, y_pred, y_train, self.lam)
+            loss = loss_fun.hinge_loss(self.model, y_pred, y_train, self.lam)
 
-        return model_grad, cost
+        grad = self.backward(y_pred, y_train, cache)
+
+        return grad, loss
 
     def forward(self, X, train=False):
         m = X.shape[0]
@@ -153,14 +86,79 @@ class NeuralNet(object):
         # Hidden to output
         score = h2 @ W3 + b3
 
-        if train:
-            return score, (h1, h2, u1, u2, bn1_cache, bn2_cache)
-        else:
-            return score
+        return score, (X, h1, h2, u1, u2, bn1_cache, bn2_cache)
+
+    def backward(self, y_pred, y_train, cache):
+        X, h1, h2, u1, u2, bn1_cache, bn2_cache = cache
+
+        m = X.shape[0]
+
+        W1, W2, W3 = self.model['W1'], self.model['W2'], self.model['W3']
+        b1, b2, b3 = self.model['b1'], self.model['b2'], self.model['b3']
+        gamma1, gamma2 = self.model['gamma1'], self.model['gamma2']
+        beta1, beta2 = self.model['beta1'], self.model['beta2']
+
+        # Output layer
+        if self.loss == 'cross_ent':
+            grad_y = loss_fun.dcross_entropy(y_pred, y_train)
+        elif self.loss == 'hinge':
+            grad_y = loss_fun.dhinge_loss(y_pred, y_train)
+
+        # W3
+        dW3 = h2.T @ grad_y
+        dW3 += reg.dl2_reg(W3, self.lam)
+
+        # b3
+        db3 = np.sum(grad_y, axis=0)
+
+        # h2
+        dh2 = grad_y @ W3.T
+
+        # ReLU
+        dh2[h2 <= 0] = 0
+
+        # Dropout h2
+        dh2 *= u2
+
+        # BatchNorm
+        dh2, dgamma2, dbeta2 = l.batchnorm_backward(dh2, bn2_cache)
+
+        # W2
+        dW2 = h1.T @ dh2
+        dW2 += reg.dl2_reg(W2, self.lam)
+
+        # b2
+        db2 = np.sum(dh2, axis=0)
+
+        # h1
+        dh1 = dh2 @ W2.T
+
+        # ReLU
+        dh1[h1 <= 0] = 0
+
+        # Dropout h1
+        dh1 *= u1
+
+        # BatchNorm
+        dh1, dgamma1, dbeta1 = l.batchnorm_backward(dh2, bn2_cache)
+
+        # W1
+        dW1 = X.T @ dh1
+        dW1 += reg.dl2_reg(W1, self.lam)
+
+        # b1
+        db1 = np.sum(dh1, axis=0)
+
+        grad = dict(
+            W1=dW1, W2=dW2, W3=dW3, b1=db1, b2=db2, b3=db3, gamma1=dgamma1,
+            gamma2=dgamma2, beta1=dbeta1, beta2=dbeta2
+        )
+
+        return grad
 
     def predict_proba(self, X):
-        prob = self.forward(X, False)
-        return prob
+        score, _ = self.forward(X, False)
+        return l.softmax(score)
 
     def predict(self, X):
         return np.argmax(self.predict_proba(X), axis=1)

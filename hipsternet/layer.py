@@ -3,6 +3,11 @@ import hipsternet.utils as util
 import hipsternet.constant as c
 
 
+def softmax(x):
+    e_x = np.exp((x.T - np.max(x, axis=1)).T)
+    return (e_x.T / e_x.sum(axis=1)).T
+
+
 def batchnorm_forward(X, gamma, beta, cache, momentum=.9):
     running_mean, running_var = cache
 
