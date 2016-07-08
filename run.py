@@ -15,19 +15,20 @@ loss = 'cross_ent'
 solver = 'adam'
 
 
-def prepro(X_train, X_test):
+def prepro(X_train, X_val, X_test):
     mean = np.mean(X_train)
-    return X_train - mean, X_test - mean
+    return X_train - mean, X_val - mean, X_test - mean
 
 
 if __name__ == '__main__':
     mnist = input_data.read_data_sets('MNIST_data/', one_hot=False)
     X_train, y_train = mnist.train.images, mnist.train.labels
+    X_val, y_val = mnist.validation.images, mnist.validation.labels
     X_test, y_test = mnist.test.images, mnist.test.labels
 
     M, D, C = X_train.shape[0], X_train.shape[1], y_train.max() + 1
 
-    X_train, X_test = prepro(X_train, X_test)
+    X_train, X_val, X_test = prepro(X_train, X_val, X_test)
 
     solvers = dict(
         sgd=sgd,
@@ -52,7 +53,8 @@ if __name__ == '__main__':
         nn = NeuralNet(D, C, H=128, lam=reg, p_dropout=p_dropout, loss=loss)
 
         nn = solver_fun(
-            nn, X_train, y_train, mb_size=mb_size, alpha=alpha, n_iter=n_iter, print_after=print_after
+            nn, X_train, y_train, val_set=(X_val, y_val), mb_size=mb_size, alpha=alpha,
+            n_iter=n_iter, print_after=print_after
         )
 
         y_pred = nn.predict(X_test)

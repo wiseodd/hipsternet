@@ -25,8 +25,11 @@ def get_minibatch(X, y, minibatch_size):
     return minibatches
 
 
-def sgd(nn, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
+def sgd(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
     minibatches = get_minibatch(X_train, y_train, mb_size)
+
+    if val_set:
+        X_val, y_val = val_set
 
     for iter in range(1, n_iter + 1):
         idx = np.random.randint(0, len(minibatches))
@@ -34,42 +37,50 @@ def sgd(nn, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=
 
         grad, loss = nn.train_step(X_mini, y_mini)
 
+        if iter % print_after == 0:
+            val_acc = util.accuracy(y_val, nn.predict(X_val))
+            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+
         for layer in grad:
             nn.model[layer] -= alpha * grad[layer]
-
-        if iter % print_after == 0:
-            print('Iter-{} loss: {}'.format(iter, loss))
 
     return nn
 
 
-def momentum(nn, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
+def momentum(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
     velocity = {k: np.zeros_like(v) for k, v in nn.model.items()}
     gamma = .9
 
     minibatches = get_minibatch(X_train, y_train, mb_size)
 
+    if val_set:
+        X_val, y_val = val_set
+
     for iter in range(1, n_iter + 1):
         idx = np.random.randint(0, len(minibatches))
         X_mini, y_mini = minibatches[idx]
 
         grad, loss = nn.train_step(X_mini, y_mini)
+
+        if iter % print_after == 0:
+            val_acc = util.accuracy(y_val, nn.predict(X_val))
+            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
 
         for layer in grad:
             velocity[layer] = gamma * velocity[layer] + alpha * grad[layer]
             nn.model[layer] -= velocity[layer]
 
-        if iter % print_after == 0:
-            print('Iter-{} loss: {}'.format(iter, loss))
-
     return nn
 
 
-def nesterov(nn, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
+def nesterov(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
     velocity = {k: np.zeros_like(v) for k, v in nn.model.items()}
     gamma = .9
 
     minibatches = get_minibatch(X_train, y_train, mb_size)
+
+    if val_set:
+        X_val, y_val = val_set
 
     for iter in range(1, n_iter + 1):
         idx = np.random.randint(0, len(minibatches))
@@ -79,42 +90,50 @@ def nesterov(nn, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_a
         nn_ahead.model.update({k: v + gamma * velocity[k] for k, v in nn.model.items()})
         grad, loss = nn_ahead.train_step(X_mini, y_mini)
 
+        if iter % print_after == 0:
+            val_acc = util.accuracy(y_val, nn.predict(X_val))
+            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+
         for layer in grad:
             velocity[layer] = gamma * velocity[layer] + alpha * grad[layer]
             nn.model[layer] -= velocity[layer]
 
-        if iter % print_after == 0:
-            print('Iter-{} loss: {}'.format(iter, loss))
-
     return nn
 
 
-def adagrad(nn, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
+def adagrad(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
     cache = {k: np.zeros_like(v) for k, v in nn.model.items()}
 
     minibatches = get_minibatch(X_train, y_train, mb_size)
+
+    if val_set:
+        X_val, y_val = val_set
 
     for iter in range(1, n_iter + 1):
         idx = np.random.randint(0, len(minibatches))
         X_mini, y_mini = minibatches[idx]
 
         grad, loss = nn.train_step(X_mini, y_mini)
+
+        if iter % print_after == 0:
+            val_acc = util.accuracy(y_val, nn.predict(X_val))
+            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
 
         for k in grad:
             cache[k] += grad[k]**2
             nn.model[k] -= alpha * grad[k] / (np.sqrt(cache[k]) + c.eps)
 
-        if iter % print_after == 0:
-            print('Iter-{} loss: {}'.format(iter, loss))
-
     return nn
 
 
-def rmsprop(nn, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
+def rmsprop(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter=2000, print_after=100):
     cache = {k: np.zeros_like(v) for k, v in nn.model.items()}
     gamma = .9
 
     minibatches = get_minibatch(X_train, y_train, mb_size)
+
+    if val_set:
+        X_val, y_val = val_set
 
     for iter in range(1, n_iter + 1):
         idx = np.random.randint(0, len(minibatches))
@@ -122,17 +141,18 @@ def rmsprop(nn, X_train, y_train, alpha=1e-3, mb_size=256, n_iter=2000, print_af
 
         grad, loss = nn.train_step(X_mini, y_mini)
 
+        if iter % print_after == 0:
+            val_acc = util.accuracy(y_val, nn.predict(X_val))
+            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+
         for k in grad:
             cache[k] = util.exp_running_avg(cache[k], grad[k]**2, gamma)
             nn.model[k] -= alpha * grad[k] / (np.sqrt(cache[k]) + c.eps)
 
-        if iter % print_after == 0:
-            print('Iter-{} loss: {}'.format(iter, loss))
-
     return nn
 
 
-def adam(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
+def adam(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
     M = {k: np.zeros_like(v) for k, v in nn.model.items()}
     R = {k: np.zeros_like(v) for k, v in nn.model.items()}
     beta1 = .9
@@ -140,12 +160,19 @@ def adam(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_afte
 
     minibatches = get_minibatch(X_train, y_train, mb_size)
 
+    if val_set:
+        X_val, y_val = val_set
+
     for iter in range(1, n_iter + 1):
         t = iter
         idx = np.random.randint(0, len(minibatches))
         X_mini, y_mini = minibatches[idx]
 
         grad, loss = nn.train_step(X_mini, y_mini)
+
+        if iter % print_after == 0:
+            val_acc = util.accuracy(y_val, nn.predict(X_val))
+            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
 
         for k in grad:
             M[k] = util.exp_running_avg(M[k], grad[k], beta1)
@@ -155,8 +182,5 @@ def adam(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_afte
             r_k_hat = R[k] / (1. - beta2**(t))
 
             nn.model[k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + c.eps)
-
-        if iter % print_after == 0:
-            print('Iter-{} loss: {}'.format(iter, loss))
 
     return nn
