@@ -1,11 +1,30 @@
 import numpy as np
 import hipsternet.utils as util
 import hipsternet.constant as c
+import hipsternet.regularization as reg
 
 
 def softmax(x):
     e_x = np.exp((x.T - np.max(x, axis=1)).T)
     return (e_x.T / e_x.sum(axis=1)).T
+
+
+def fc_backward(dinput, h, W, input_layer=False, lam=1e-3):
+    dW = h.T @ dinput
+    dW += reg.dl2_reg(W, lam)
+    db = np.sum(dinput, axis=0)
+
+    dh = None
+
+    if not input_layer:
+        dh = dinput @ W.T
+        dh[h <= 0] = 0
+
+    return dh, dW, db
+
+
+def dropout_backward(dh, dropout_mask):
+    return dh * dropout_mask
 
 
 def batchnorm_forward(X, gamma, beta, cache, momentum=.9):
