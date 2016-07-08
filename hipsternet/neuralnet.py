@@ -1,8 +1,6 @@
 import numpy as np
 import hipsternet.loss as loss_fun
-import hipsternet.regularization as reg
 import hipsternet.layer as l
-import hipsternet.constant as c
 
 
 class NeuralNet(object):
@@ -33,58 +31,36 @@ class NeuralNet(object):
         return grad, loss
 
     def forward(self, X, train=False):
-        m = X.shape[0]
-
-        W1, W2, W3 = self.model['W1'], self.model['W2'], self.model['W3']
-        b1, b2, b3 = self.model['b1'], self.model['b2'], self.model['b3']
         gamma1, gamma2 = self.model['gamma1'], self.model['gamma2']
         beta1, beta2 = self.model['beta1'], self.model['beta2']
-        bn1_mean, bn2_mean = self.bn_caches['bn1_mean'], self.bn_caches['bn2_mean']
-        bn1_var, bn2_var = self.bn_caches['bn1_var'], self.bn_caches['bn2_var']
 
         u1, u2 = None, None
         bn1_cache, bn2_cache = None, None
 
-        # Input to hidden
-        h1 = X @ W1 + b1
+        # First layer
+        h1 = l.fc_forward(X, self.model['W1'], self.model['b1'])
+        bn1_cache = (self.bn_caches['bn1_mean'], self.bn_caches['bn1_var'])
+        h1, bn1_cache, run_mean, run_var = l.bn_forward(h1, gamma1, beta1, bn1_cache, train=train)
+        h1 = l.relu_forward(h1)
 
-        # BatchNorm
-        if train:
-            h1, bn1_cache, run_mean, run_var = l.batchnorm_forward(h1, gamma1, beta1, (bn1_mean, bn1_var))
-            self.bn_caches['bn1_mean'], self.bn_caches['bn1_var'] = run_mean, run_var
-        else:
-            h1 = (h1 - bn1_mean) / np.sqrt(bn1_var + c.eps)
-            h1 = gamma1 * h1 + beta1
-
-        # ReLU
-        h1[h1 < 0] = 0
+        self.bn_caches['bn1_mean'], self.bn_caches['bn1_var'] = run_mean, run_var
 
         if train:
-            # Dropout
-            u1 = np.random.binomial(1, self.p_dropout, size=h1.shape) / self.p_dropout
-            h1 *= u1
+            h1, u1 = l.dropout_forward(h1, self.p_dropout)
 
-        # Hidden to hidden
-        h2 = h1 @ W2 + b2
+        # Second layer
+        h2 = l.fc_forward(h1, self.model['W2'], self.model['b2'])
+        bn2_cache = (self.bn_caches['bn2_mean'], self.bn_caches['bn2_var'])
+        h2, bn2_cache, run_mean, run_var = l.bn_forward(h2, gamma2, beta2, bn2_cache, train=train)
+        h2 = l.relu_forward(h2)
 
-        # BatchNorm
-        if train:
-            h2, bn2_cache, run_mean, run_var = l.batchnorm_forward(h2, gamma2, beta2, (bn2_mean, bn2_var))
-            self.bn_caches['bn2_mean'], self.bn_caches['bn2_var'] = run_mean, run_var
-        else:
-            h2 = (h2 - bn2_mean) / np.sqrt(bn2_var + c.eps)
-            h2 = gamma2 * h2 + beta2
-
-        # ReLU
-        h2[h2 < 0] = 0
+        self.bn_caches['bn2_mean'], self.bn_caches['bn2_var'] = run_mean, run_var
 
         if train:
-            # Dropout
-            u2 = np.random.binomial(1, self.p_dropout, size=h2.shape) / self.p_dropout
-            h2 *= u2
+            h2, u2 = l.dropout_forward(h2, self.p_dropout)
 
-        # Hidden to output
-        score = h2 @ W3 + b3
+        # Third layer
+        score = l.fc_forward(h2, self.model['W3'], self.model['b3'])
 
         return score, (X, h1, h2, u1, u2, bn1_cache, bn2_cache)
 
@@ -99,13 +75,15 @@ class NeuralNet(object):
 
         # Third layer
         dh2, dW3, db3 = l.fc_backward(grad_y, h2, self.model['W3'], lam=self.lam)
+        dh2 = l.relu_backward(dh2, h2)
         dh2 = l.dropout_backward(dh2, u2)
-        dh2, dgamma2, dbeta2 = l.batchnorm_backward(dh2, bn2_cache)
+        dh2, dgamma2, dbeta2 = l.bn_backward(dh2, bn2_cache)
 
         # Second layer
         dh1, dW2, db2 = l.fc_backward(dh2, h1, self.model['W2'], lam=self.lam)
+        dh1 = l.relu_backward(dh1, h1)
         dh1 = l.dropout_backward(dh1, u1)
-        dh1, dgamma1, dbeta1 = l.batchnorm_backward(dh1, bn1_cache)
+        dh1, dgamma1, dbeta1 = l.bn_backward(dh1, bn1_cache)
 
         # First layer
         _, dW1, db1 = l.fc_backward(dh1, X, self.model['W1'], lam=self.lam, input_layer=True)

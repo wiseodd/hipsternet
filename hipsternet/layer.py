@@ -9,6 +9,10 @@ def softmax(x):
     return (e_x.T / e_x.sum(axis=1)).T
 
 
+def fc_forward(l_in, W, b):
+    return l_in @ W + b
+
+
 def fc_backward(dinput, h, W, input_layer=False, lam=1e-3):
     dW = h.T @ dinput
     dW += reg.dl2_reg(W, lam)
@@ -18,33 +22,53 @@ def fc_backward(dinput, h, W, input_layer=False, lam=1e-3):
 
     if not input_layer:
         dh = dinput @ W.T
-        dh[h <= 0] = 0
 
     return dh, dW, db
+
+
+def relu_forward(h):
+    return np.maximum(h, 0)
+
+
+def relu_backward(dh, h):
+    dh = dh.copy()
+    dh[h <= 0] = 0
+
+    return dh
+
+
+def dropout_forward(h, p_dropout):
+    u = np.random.binomial(1, p_dropout, size=h.shape) / p_dropout
+    return h * u, u
 
 
 def dropout_backward(dh, dropout_mask):
     return dh * dropout_mask
 
 
-def batchnorm_forward(X, gamma, beta, cache, momentum=.9):
+def bn_forward(X, gamma, beta, cache, momentum=.9, train=True):
     running_mean, running_var = cache
 
-    mu = np.mean(X, axis=0)
-    var = np.var(X, axis=0)
+    if train:
+        mu = np.mean(X, axis=0)
+        var = np.var(X, axis=0)
 
-    X_norm = (X - mu) / np.sqrt(var + c.eps)
-    out = gamma * X_norm + beta
+        X_norm = (X - mu) / np.sqrt(var + c.eps)
+        out = gamma * X_norm + beta
 
-    cache = (X, X_norm, mu, var, gamma, beta)
+        cache = (X, X_norm, mu, var, gamma, beta)
 
-    running_mean = util.exp_running_avg(running_mean, mu, momentum)
-    running_var = util.exp_running_avg(running_var, var, momentum)
+        running_mean = util.exp_running_avg(running_mean, mu, momentum)
+        running_var = util.exp_running_avg(running_var, var, momentum)
+    else:
+        X_norm = (X - running_mean) / np.sqrt(running_var + c.eps)
+        out = gamma * X_norm + beta
+        cache = None
 
     return out, cache, running_mean, running_var
 
 
-def batchnorm_backward(dout, cache):
+def bn_backward(dout, cache):
     X, X_norm, mu, var, gamma, beta = cache
 
     N, D = X.shape
