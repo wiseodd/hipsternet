@@ -15,6 +15,11 @@ loss = 'cross_ent'
 solver = 'adam'
 
 
+def prepro(X_train, X_test):
+    mean = np.mean(X_train)
+    return X_train - mean, X_test - mean
+
+
 if __name__ == '__main__':
     mnist = input_data.read_data_sets('MNIST_data/', one_hot=False)
     X_train, y_train = mnist.train.images, mnist.train.labels
@@ -22,11 +27,7 @@ if __name__ == '__main__':
 
     M, D, C = X_train.shape[0], X_train.shape[1], y_train.max() + 1
 
-    # Normalization
-    X_mean = X_train.mean()
-
-    X_train = X_train - X_mean
-    X_test = X_test - X_mean
+    X_train, X_test = prepro(X_train, X_test)
 
     solvers = dict(
         sgd=sgd,
