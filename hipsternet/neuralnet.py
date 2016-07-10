@@ -7,12 +7,14 @@ class NeuralNet(object):
 
     forward_nonlins = dict(
         relu=l.relu_forward,
+        lrelu=l.lrelu_forward,
         sigmoid=l.sigmoid_forward,
         tanh=l.tanh_forward
     )
 
     backward_nonlins = dict(
         relu=l.relu_backward,
+        lrelu=l.lrelu_backward,
         sigmoid=l.sigmoid_backward,
         tanh=l.tanh_backward
     )
@@ -21,8 +23,8 @@ class NeuralNet(object):
         if loss not in ('cross_ent', 'hinge'):
             raise Exception('Loss function must be either "cross_ent" or "hinge"!')
 
-        if nonlin not in ('relu', 'sigmoid', 'tanh'):
-            raise Exception('Nonlinearity must be either "relu", "sigmoid", or "tanh"!')
+        if nonlin not in ('relu', 'lrelu', 'sigmoid', 'tanh'):
+            raise Exception('Nonlinearity must be either "relu", "lrelu", "sigmoid", or "tanh"!')
 
         self._init_model(D, C, H)
 

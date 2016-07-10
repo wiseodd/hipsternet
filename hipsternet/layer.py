@@ -31,10 +31,19 @@ def relu_forward(h):
 
 
 def relu_backward(dh, h):
-    dh = dh.copy()
-    dh[h <= 0] = 0
+    out = dh.copy()
+    out[h <= 0] = 0
+    return out
 
-    return dh
+
+def lrelu_forward(h, a=1e-3):
+    return (h < 0) * a * h + (h >= 0) * h
+
+
+def lrelu_backward(dh, h, a=1e-3):
+    out = dh.copy()
+    out[h < 0] *= a
+    return out
 
 
 def sigmoid_forward(h):
