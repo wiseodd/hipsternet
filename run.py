@@ -12,6 +12,7 @@ reg = 1e-3
 print_after = 100
 p_dropout = 0.8
 loss = 'cross_ent'
+nonlin = 'relu'
 solver = 'adam'
 
 
@@ -50,7 +51,7 @@ if __name__ == '__main__':
         print('Experiment-{}'.format(k + 1))
 
         # Reset model
-        nn = NeuralNet(D, C, H=128, lam=reg, p_dropout=p_dropout, loss=loss)
+        nn = NeuralNet(D, C, H=128, lam=reg, p_dropout=p_dropout, loss=loss, nonlin=nonlin)
 
         nn = solver_fun(
             nn, X_train, y_train, val_set=(X_val, y_val), mb_size=mb_size, alpha=alpha,

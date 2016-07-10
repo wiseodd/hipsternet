@@ -37,6 +37,22 @@ def relu_backward(dh, h):
     return dh
 
 
+def sigmoid_forward(h):
+    return 1. / np.log(1 + np.exp(-h))
+
+
+def sigmoid_backward(dh, cache=None):
+    return sigmoid_forward(dh) * (1 - sigmoid_forward(dh))
+
+
+def tanh_forward(h):
+    return np.tanh(h)
+
+
+def tanh_backward(dh, cache=None):
+    return 1 - np.tanh(dh)**2
+
+
 def dropout_forward(h, p_dropout):
     u = np.random.binomial(1, p_dropout, size=h.shape) / p_dropout
     return h * u, u

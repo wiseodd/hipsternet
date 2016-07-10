@@ -5,15 +5,32 @@ import hipsternet.layer as l
 
 class NeuralNet(object):
 
-    def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent'):
-        self._init_model(D, C, H)
+    forward_nonlins = dict(
+        relu=l.relu_forward,
+        sigmoid=l.sigmoid_forward,
+        tanh=l.tanh_forward
+    )
 
+    backward_nonlins = dict(
+        relu=l.relu_backward,
+        sigmoid=l.sigmoid_backward,
+        tanh=l.tanh_backward
+    )
+
+    def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
         if loss not in ('cross_ent', 'hinge'):
             raise Exception('Loss function must be either "cross_ent" or "hinge"!')
+
+        if nonlin not in ('relu', 'sigmoid', 'tanh'):
+            raise Exception('Nonlinearity must be either "relu", "sigmoid", or "tanh"!')
+
+        self._init_model(D, C, H)
 
         self.lam = lam
         self.p_dropout = p_dropout
         self.loss = loss
+        self.forward_nonlin = NeuralNet.forward_nonlins[nonlin]
+        self.backward_nonlin = NeuralNet.backward_nonlins[nonlin]
 
     def train_step(self, X_train, y_train):
         """
@@ -41,7 +58,7 @@ class NeuralNet(object):
         h1 = l.fc_forward(X, self.model['W1'], self.model['b1'])
         bn1_cache = (self.bn_caches['bn1_mean'], self.bn_caches['bn1_var'])
         h1, bn1_cache, run_mean, run_var = l.bn_forward(h1, gamma1, beta1, bn1_cache, train=train)
-        h1 = l.relu_forward(h1)
+        h1 = self.forward_nonlin(h1)
 
         self.bn_caches['bn1_mean'], self.bn_caches['bn1_var'] = run_mean, run_var
 
@@ -52,7 +69,7 @@ class NeuralNet(object):
         h2 = l.fc_forward(h1, self.model['W2'], self.model['b2'])
         bn2_cache = (self.bn_caches['bn2_mean'], self.bn_caches['bn2_var'])
         h2, bn2_cache, run_mean, run_var = l.bn_forward(h2, gamma2, beta2, bn2_cache, train=train)
-        h2 = l.relu_forward(h2)
+        h2 = self.forward_nonlin(h2)
 
         self.bn_caches['bn2_mean'], self.bn_caches['bn2_var'] = run_mean, run_var
 
@@ -75,13 +92,13 @@ class NeuralNet(object):
 
         # Third layer
         dh2, dW3, db3 = l.fc_backward(grad_y, h2, self.model['W3'], lam=self.lam)
-        dh2 = l.relu_backward(dh2, h2)
+        dh2 = self.backward_nonlin(dh2, h2)
         dh2 = l.dropout_backward(dh2, u2)
         dh2, dgamma2, dbeta2 = l.bn_backward(dh2, bn2_cache)
 
         # Second layer
         dh1, dW2, db2 = l.fc_backward(dh2, h1, self.model['W2'], lam=self.lam)
-        dh1 = l.relu_backward(dh1, h1)
+        dh1 = self.backward_nonlin(dh1, h1)
         dh1 = l.dropout_backward(dh1, u1)
         dh1, dgamma1, dbeta1 = l.bn_backward(dh1, bn1_cache)
 
