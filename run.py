@@ -4,11 +4,11 @@ from hipsternet.solver import *
 from hipsternet.neuralnet import NeuralNet
 
 
-n_iter = 1000
+n_iter = 5000
 alpha = 1e-3
 mb_size = 100
 n_experiment = 1
-reg = 1e-3
+reg = 1e-5
 print_after = 100
 p_dropout = 0.8
 loss = 'cross_ent'
