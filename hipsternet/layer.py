@@ -37,7 +37,7 @@ def relu_backward(dh, h):
 
 
 def lrelu_forward(h, a=1e-3):
-    return (h < 0) * a * h + (h >= 0) * h
+    return np.maximum(a * h, h)
 
 
 def lrelu_backward(dh, h, a=1e-3):
