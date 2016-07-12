@@ -18,11 +18,19 @@ Note, things will be added over time, so not all the hipsterest things will be h
 
 1. Cross Entropy
 2. Hinge Loss
+3. Squared Loss
 
 #### Regularization
 
 1. Dropout
 2. Your usual L1 and L2 regularization
+
+#### Nonlinearities
+
+1. ReLU
+2. leaky ReLU
+3. sigmoid
+4. tanh
 
 #### Hipster techniques
 
