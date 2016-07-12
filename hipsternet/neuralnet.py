@@ -5,6 +5,18 @@ import hipsternet.layer as l
 
 class NeuralNet(object):
 
+    loss_funs = dict(
+        cross_ent=loss_fun.cross_entropy,
+        hinge=loss_fun.hinge_loss,
+        squared=loss_fun.squared_loss
+    )
+
+    dloss_funs = dict(
+        cross_ent=loss_fun.dcross_entropy,
+        hinge=loss_fun.dhinge_loss,
+        squared=loss_fun.dsquared_loss
+    )
+
     forward_nonlins = dict(
         relu=l.relu_forward,
         lrelu=l.lrelu_forward,
@@ -20,11 +32,11 @@ class NeuralNet(object):
     )
 
     def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
-        if loss not in ('cross_ent', 'hinge'):
-            raise Exception('Loss function must be either "cross_ent" or "hinge"!')
+        if loss not in NeuralNet.loss_funs.keys():
+            raise Exception('Loss function must be in {}!'.format(NeuralNet.loss_funs.keys()))
 
-        if nonlin not in ('relu', 'lrelu', 'sigmoid', 'tanh'):
-            raise Exception('Nonlinearity must be either "relu", "lrelu", "sigmoid", or "tanh"!')
+        if nonlin not in NeuralNet.forward_nonlins.keys():
+            raise Exception('Nonlinearity must be in {}!'.format(NeuralNet.forward_nonlins.keys()))
 
         self._init_model(D, C, H)
 
@@ -39,12 +51,7 @@ class NeuralNet(object):
         Single training step over minibatch: forward, loss, backprop
         """
         y_pred, cache = self.forward(X_train, train=True)
-
-        if self.loss == 'cross_ent':
-            loss = loss_fun.cross_entropy(self.model, y_pred, y_train, self.lam)
-        elif self.loss == 'hinge':
-            loss = loss_fun.hinge_loss(self.model, y_pred, y_train, self.lam)
-
+        loss = self.loss_funs[self.loss](self.model, y_pred, y_train, self.lam)
         grad = self.backward(y_pred, y_train, cache)
 
         return grad, loss
@@ -87,10 +94,7 @@ class NeuralNet(object):
         X, h1, h2, u1, u2, bn1_cache, bn2_cache = cache
 
         # Output layer
-        if self.loss == 'cross_ent':
-            grad_y = loss_fun.dcross_entropy(y_pred, y_train)
-        elif self.loss == 'hinge':
-            grad_y = loss_fun.dhinge_loss(y_pred, y_train)
+        grad_y = self.dloss_funs[self.loss](y_pred, y_train)
 
         # Third layer
         dh2, dW3, db3 = l.fc_backward(grad_y, h2, self.model['W3'], lam=self.lam)

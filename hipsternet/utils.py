@@ -7,3 +7,9 @@ def exp_running_avg(running, new, gamma=.9):
 
 def accuracy(y_true, y_pred):
     return np.mean(y_pred == y_true)
+
+
+def onehot(labels):
+    y = np.zeros([labels.size, np.max(labels) + 1])
+    y[range(labels.size), labels] = 1.
+    return y
