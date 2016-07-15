@@ -145,3 +145,58 @@ class NeuralNet(object):
             bn1_var=np.zeros((1, H)),
             bn2_var=np.zeros((1, H))
         )
+
+
+class ConvNet(object):
+
+    def __init__(self, C, H):
+        self._init_model(C, H)
+        self.lam = 1e-5
+
+    def train_step(self, X_train, y_train):
+        """
+        Single training step over minibatch: forward, loss, backprop
+        """
+        y_pred, cache = self.forward(X_train, train=True)
+        loss = loss_fun.cross_entropy(self.model, y_pred, y_train, self.lam)
+        grad = self.backward(y_pred, y_train, cache)
+
+        return grad, loss
+
+    def forward(self, X, train=False):
+        # Conv-1
+        h1, h1_cache = l.conv_forward(X, self.model['W1'], self.model['b1'])
+        h1 = l.relu_forward(h1)
+
+        # Pool-1
+        h2, h2_cache = l.maxpool_forward(h1)
+        h2 = h2.ravel()
+
+        # FC-7
+        h3 = l.fc_forward(h2, self.model['W2'], self.model['b2'])
+        h3 = l.relu_forward(h3)
+
+        # Softmax
+        score = l.fc_forward(h3, self.model['W3'], self.model['b3'])
+
+        return score, (X, h1_cache, h2_cache, h3)
+
+    def backward(self, y_pred, y_train, cache):
+        pass
+
+    def predict_proba(self, X):
+        score, _ = self.forward(X, False)
+        return l.softmax(score)
+
+    def predict(self, X):
+        return np.argmax(self.predict_proba(X), axis=1)
+
+    def _init_model(self, C, H):
+        self.model = dict(
+            W1=np.random.randn(10, 3, 3),
+            W2=np.random.randn(1960, H),
+            W3=np.random.randn(H, C),
+            b1=np.zeros((10, 1)),
+            b2=np.zeros((1, H)),
+            b3=np.zeros((1, C))
+        )

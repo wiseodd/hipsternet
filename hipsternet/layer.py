@@ -132,8 +132,8 @@ def conv_backward(dout, cache):
     ])
 
 
-def maxpool_forward(l_in):
-    res = [util.maxpool_2d(h, k=2, stride=2) for h in l_in]
+def maxpool_forward(l_in, size=2, stride=2):
+    res = [util.maxpool_2d(h, k=size, stride=stride) for h in l_in]
     out = np.array([r[0] for r in res])
     cache = np.array([r[1] for r in res])
 
