@@ -173,8 +173,8 @@ class ConvNet(NeuralNet):
         h1 = l.relu_forward(h1)
 
         # Pool-1
-        h2, h2_cache = l.maxpool_forward(h1)
-        h2 = h2.ravel()
+        hpool, hpool_cache = l.maxpool_forward(h1)
+        h2 = hpool.ravel().reshape((1, -1))
 
         # FC-7
         h3 = l.fc_forward(h2, self.model['W2'], self.model['b2'])
@@ -183,16 +183,39 @@ class ConvNet(NeuralNet):
         # Softmax
         score = l.fc_forward(h3, self.model['W3'], self.model['b3'])
 
-        return score, (X, h1_cache, h2_cache, h3)
+        return score, (X, h1_cache, hpool_cache, h1, hpool, h2, h3)
 
     def backward(self, y_pred, y_train, cache):
-        pass
+        X, h1_cache, hpool_cache, h1, hpool, h2, h3 = cache
+
+        # Output layer
+        grad_y = self.dloss_funs[self.loss](y_pred, y_train)
+
+        # FC-7
+        dh3, dW3, db3 = l.fc_backward(grad_y, h3, self.model['W3'], lam=self.lam)
+        dh3 = self.backward_nonlin(dh3, h3)
+
+        dh2, dW2, db2 = l.fc_backward(dh3, h2, self.model['W2'], lam=self.lam)
+
+        # Pool-1
+        dh2 = dh2.reshape(hpool.shape)
+        dpool = l.maxpool_backward(dh2, (hpool_cache, h1))
+
+        # Conv-1
+        # _, dW1, db1 = l.conv_backward(dpool, h1_cache)
+        dW1, db1 = np.zeros_like(self.model['W1'], self.model['b1'])
+
+        grad = dict(
+            W1=dW1, W2=dW2, W3=dW3, b1=db1, b2=db2, b3=db3
+        )
+
+        return grad
 
     def _init_model(self, D, C, H):
         self.model = dict(
-            W1=np.random.randn(D, 3, 3),
-            W2=np.random.randn(1960, H),
-            W3=np.random.randn(H, C),
+            W1=np.random.randn(D, 3, 3) / np.sqrt(D / 2.),
+            W2=np.random.randn(1960, H) / np.sqrt(D / 2.),
+            W3=np.random.randn(H, C) / np.sqrt(D / 2.),
             b1=np.zeros((D, 1)),
             b2=np.zeros((1, H)),
             b3=np.zeros((1, C))

@@ -30,6 +30,7 @@ def conv_2d(X, kernel, stride=1, padding=1):
     if not out_dim.is_integer():
         raise Exception('Convolution parameters invalid! Please check the input, kernel, stride, and padding size!')
 
+    out_dim = int(out_dim)
     out = np.zeros(shape=[out_dim, out_dim])
 
     for i, ii in enumerate(range(0, w - k + 1, stride)):
@@ -40,20 +41,30 @@ def conv_2d(X, kernel, stride=1, padding=1):
 
 
 def maxpool_2d(X, k=2, stride=2):
-    if not is_square(X):
+    if not is_square(X[0]):
         raise Exception('Image must be a square matrix!')
 
     m = X.shape[0]
     out_dim = (m - k) / stride + 1
+
+    if not out_dim.is_integer():
+        raise Exception('Pooling parameters invalid! Please check the input, pool size, and stride!')
+
+    out_dim = int(out_dim)
     out = np.zeros(shape=[out_dim, out_dim])
-    cache = np.zeros_like(X, dtype=bool)
+
+    cache = []
 
     for i, ii in enumerate(range(0, m - k + 1, stride)):
+        idxs = []
+
         for j, jj in enumerate(range(0, m - k + 1, stride)):
             patch = X[ii:ii + k, jj:jj + k]
             x, y = np.unravel_index(np.argmax(patch), patch.shape)
             out[i, j] = patch[x, y]
-            cache[ii + x, jj + y] = 1
+            idxs.append((ii + x, jj + y))
+
+        cache.append(idxs)
 
     return out, cache
 

@@ -141,9 +141,18 @@ def maxpool_forward(l_in, size=2, stride=2):
 
 
 def maxpool_backward(dout, cache):
-    dout = dout.copy()
+    idxs, h = cache
+    din = np.zeros_like(h)
 
-    for d, c in zip(dout, cache):
-        d[cache <= 0] = 0
+    print(din.shape, dout.shape)
 
-    return dout
+    for i in range(len(din)):
+        dout_flat = dout[i].ravel()
+
+        row, col, _ = idxs[i].shape
+        cache_flat = idxs[i].reshape(row * col, -1)
+
+        for d, c in zip(dout_flat, cache_flat):
+            din[i, c] = d
+
+    return din
