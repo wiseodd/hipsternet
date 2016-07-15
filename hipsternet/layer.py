@@ -110,3 +110,40 @@ def bn_backward(dout, cache):
     dbeta = np.sum(dout, axis=0)
 
     return dX, dgamma, dbeta
+
+
+def conv_forward(l_in, W, b, stride=1, padding=1):
+    cache = W, b, stride, padding
+
+    out = np.array([
+        util.conv_2d(l_in, kernel, stride, padding) + bb
+        for kernel, bb in zip(W, b)
+    ])
+
+    return out, cache
+
+
+def conv_backward(dout, cache):
+    W, b, stride, padding = cache
+
+    return np.array([
+        util.conv_2d(d, kernel.T, stride, padding) + bb
+        for d, kernel, bb, in zip(dout, W, b)
+    ])
+
+
+def maxpool_forward(l_in):
+    res = [util.maxpool_2d(h, k=2, stride=2) for h in l_in]
+    out = np.array([r[0] for r in res])
+    cache = np.array([r[1] for r in res])
+
+    return out, cache
+
+
+def maxpool_backward(dout, cache):
+    dout = dout.copy()
+
+    for d, c in zip(dout, cache):
+        d[cache <= 0] = 0
+
+    return dout
