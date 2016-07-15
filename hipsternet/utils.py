@@ -39,6 +39,25 @@ def conv_2d(X, kernel, stride=1, padding=1):
     return out
 
 
+def maxpool_2d(X, k=2, stride=2):
+    if not is_square(X):
+        raise Exception('Image must be a square matrix!')
+
+    m = X.shape[0]
+    out_dim = (m - k) / stride + 1
+    out = np.zeros(shape=[out_dim, out_dim])
+    cache = np.zeros_like(X, dtype=bool)
+
+    for i, ii in enumerate(range(0, m - k + 1, stride)):
+        for j, jj in enumerate(range(0, m - k + 1, stride)):
+            patch = X[ii:ii + k, jj:jj + k]
+            x, y = np.unravel_index(np.argmax(patch), patch.shape)
+            out[i, j] = patch[x, y]
+            cache[ii + x, jj + y] = 1
+
+    return out, cache
+
+
 def zeropad_image(X, pad=1):
     m, n = X.shape
 
