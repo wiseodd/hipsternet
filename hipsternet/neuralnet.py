@@ -56,6 +56,28 @@ class NeuralNet(object):
 
         return grad, loss
 
+    def predict_proba(self, X):
+        score, _ = self.forward(X, False)
+        return l.softmax(score)
+
+    def predict(self, X):
+        return np.argmax(self.predict_proba(X), axis=1)
+
+    def forward(self, X, train=False):
+        raise NotImplementedError()
+
+    def backward(self, y_pred, y_train, cache):
+        raise NotImplementedError()
+
+    def _init_model(self, D, C, H):
+        raise NotImplementedError()
+
+
+class FeedForwardNet(NeuralNet):
+
+    def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
+        super().__init__(D, C, H, lam, p_dropout, loss, nonlin)
+
     def forward(self, X, train=False):
         gamma1, gamma2 = self.model['gamma1'], self.model['gamma2']
         beta1, beta2 = self.model['beta1'], self.model['beta2']
@@ -118,13 +140,6 @@ class NeuralNet(object):
 
         return grad
 
-    def predict_proba(self, X):
-        score, _ = self.forward(X, False)
-        return l.softmax(score)
-
-    def predict(self, X):
-        return np.argmax(self.predict_proba(X), axis=1)
-
     def _init_model(self, D, C, H):
         self.model = dict(
             W1=np.random.randn(D, H) / np.sqrt(D / 2.),
@@ -147,21 +162,10 @@ class NeuralNet(object):
         )
 
 
-class ConvNet(object):
+class ConvNet(NeuralNet):
 
-    def __init__(self, C, H):
-        self._init_model(C, H)
-        self.lam = 1e-5
-
-    def train_step(self, X_train, y_train):
-        """
-        Single training step over minibatch: forward, loss, backprop
-        """
-        y_pred, cache = self.forward(X_train, train=True)
-        loss = loss_fun.cross_entropy(self.model, y_pred, y_train, self.lam)
-        grad = self.backward(y_pred, y_train, cache)
-
-        return grad, loss
+    def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
+        super().__init__(D, C, H, lam, p_dropout, loss, nonlin)
 
     def forward(self, X, train=False):
         # Conv-1
@@ -184,19 +188,12 @@ class ConvNet(object):
     def backward(self, y_pred, y_train, cache):
         pass
 
-    def predict_proba(self, X):
-        score, _ = self.forward(X, False)
-        return l.softmax(score)
-
-    def predict(self, X):
-        return np.argmax(self.predict_proba(X), axis=1)
-
-    def _init_model(self, C, H):
+    def _init_model(self, D, C, H):
         self.model = dict(
-            W1=np.random.randn(10, 3, 3),
+            W1=np.random.randn(D, 3, 3),
             W2=np.random.randn(1960, H),
             W3=np.random.randn(H, C),
-            b1=np.zeros((10, 1)),
+            b1=np.zeros((D, 1)),
             b2=np.zeros((1, H)),
             b3=np.zeros((1, C))
         )
