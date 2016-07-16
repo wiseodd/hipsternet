@@ -170,8 +170,8 @@ def maxpool_forward(X, size=2, stride=2):
     max_idx = np.argmax(X_col, axis=0)
 
     out = X_col[max_idx, range(max_idx.size)]
-    out = out.reshape(d, h_out, w_out, n)
-    out = out.transpose(3, 0, 1, 2)
+    out = out.reshape(h_out, w_out, n, d)
+    out = out.transpose(2, 3, 0, 1)
 
     cache = (X, size, stride, X_col, max_idx)
 

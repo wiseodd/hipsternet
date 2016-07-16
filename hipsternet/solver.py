@@ -165,9 +165,8 @@ def adam(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_iter=20
         grad, loss = nn.train_step(X_mini, y_mini)
 
         if iter % print_after == 0:
-            # val_acc = util.accuracy(y_val, nn.predict(X_val))
-            # print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
-            print('Iter-{} loss: {:.4f}'.format(iter, loss))
+            val_acc = util.accuracy(y_val, nn.predict(X_val))
+            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
 
         for k in grad:
             M[k] = util.exp_running_avg(M[k], grad[k], beta1)

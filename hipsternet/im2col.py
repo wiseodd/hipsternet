@@ -6,8 +6,8 @@ def get_im2col_indices(x_shape, field_height, field_width, padding=1, stride=1):
     N, C, H, W = x_shape
     assert (H + 2 * padding - field_height) % stride == 0
     assert (W + 2 * padding - field_height) % stride == 0
-    out_height = (H + 2 * padding - field_height) / stride + 1
-    out_width = (W + 2 * padding - field_width) / stride + 1
+    out_height = int((H + 2 * padding - field_height) / stride + 1)
+    out_width = int((W + 2 * padding - field_width) / stride + 1)
 
     i0 = np.repeat(np.arange(field_height), field_width)
     i0 = np.tile(i0, C)

@@ -1,12 +1,13 @@
 import numpy as np
 import hipsternet.input_data as input_data
+import hipsternet.neuralnet as nn
 from hipsternet.solver import *
-from hipsternet.neuralnet import NeuralNet
+import sys
 
 
-n_iter = 2000
+n_iter = 1000
 alpha = 1e-3
-mb_size = 100
+mb_size = 64
 n_experiment = 1
 reg = 1e-5
 print_after = 100
@@ -22,6 +23,15 @@ def prepro(X_train, X_val, X_test):
 
 
 if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        net_type = sys.argv[1]
+        valid_nets = ('ff', 'cnn')
+
+        if net_type not in valid_nets:
+            raise Exception('Valid network type are {}'.format(valid_nets))
+    else:
+        net_type = 'ff'
+
     mnist = input_data.read_data_sets('MNIST_data/', one_hot=False)
     X_train, y_train = mnist.train.images, mnist.train.labels
     X_val, y_val = mnist.validation.images, mnist.validation.labels
@@ -30,6 +40,12 @@ if __name__ == '__main__':
     M, D, C = X_train.shape[0], X_train.shape[1], y_train.max() + 1
 
     X_train, X_val, X_test = prepro(X_train, X_val, X_test)
+
+    if net_type == 'cnn':
+        img_shape = (1, 28, 28)
+        X_train = X_train.reshape(-1, *img_shape)
+        X_val = X_val.reshape(-1, *img_shape)
+        X_test = X_test.reshape(-1, *img_shape)
 
     solvers = dict(
         sgd=sgd,
@@ -51,14 +67,17 @@ if __name__ == '__main__':
         print('Experiment-{}'.format(k + 1))
 
         # Reset model
-        nn = NeuralNet(D, C, H=128, lam=reg, p_dropout=p_dropout, loss=loss, nonlin=nonlin)
+        if net_type == 'ff':
+            net = nn.FeedForwardNet(D, C, H=128, lam=reg, p_dropout=p_dropout, loss=loss, nonlin=nonlin)
+        elif net_type == 'cnn':
+            net = nn.ConvNet(10, C, H=128)
 
-        nn = solver_fun(
-            nn, X_train, y_train, val_set=(X_val, y_val), mb_size=mb_size, alpha=alpha,
+        net = solver_fun(
+            net, X_train, y_train, val_set=(X_val, y_val), mb_size=mb_size, alpha=alpha,
             n_iter=n_iter, print_after=print_after
         )
 
-        y_pred = nn.predict(X_test)
+        y_pred = net.predict(X_test)
         accs[k] = np.mean(y_pred == y_test)
 
     print()

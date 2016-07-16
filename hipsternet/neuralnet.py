@@ -174,7 +174,7 @@ class ConvNet(NeuralNet):
 
         # Pool-1
         hpool, hpool_cache = l.maxpool_forward(h1)
-        h2 = hpool.ravel().reshape((1, -1))
+        h2 = hpool.ravel().reshape(-1, 1960)
 
         # FC-7
         h3 = l.fc_forward(h2, self.model['W2'], self.model['b2'])
@@ -200,10 +200,10 @@ class ConvNet(NeuralNet):
 
         # Pool-1
         dpool = l.maxpool_backward(dh2, hpool_cache)
-        dpool = self.backward_nonlin(dpool, h1)
 
         # Conv-1
-        dX, dW1, db1 = l.conv_backward(dpool, h1_cache)
+        dh1 = self.backward_nonlin(dpool, h1)
+        dX, dW1, db1 = l.conv_backward(dh1, h1_cache)
 
         grad = dict(
             W1=dW1, W2=dW2, W3=dW3, b1=db1, b2=db2, b3=db3
@@ -214,7 +214,7 @@ class ConvNet(NeuralNet):
     def _init_model(self, D, C, H):
         self.model = dict(
             W1=np.random.randn(D, 1, 3, 3) / np.sqrt(D / 2.),
-            W2=np.random.randn(9800, H) / np.sqrt(9800 / 2.),
+            W2=np.random.randn(D * 14 * 14, H) / np.sqrt(D * 14 * 14 / 2.),
             W3=np.random.randn(H, C) / np.sqrt(H / 2.),
             b1=np.zeros((D, 1)),
             b2=np.zeros((1, H)),
