@@ -128,7 +128,7 @@ def conv_forward(X, W, b, stride=1, padding=1):
     X_col = im2col_indices(X, h_filter, w_filter, padding=padding, stride=stride)
     W_col = W.reshape(n_filters, -1)
 
-    out = W_col @ X_col
+    out = W_col @ X_col + b
     out = out.reshape(n_filters, h_out, w_out, n_x)
     out = out.transpose(3, 0, 1, 2)
 
