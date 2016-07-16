@@ -213,7 +213,7 @@ class ConvNet(NeuralNet):
 
     def _init_model(self, D, C, H):
         self.model = dict(
-            W1=np.random.randn(D, 3, 3) / np.sqrt(D / 2.),
+            W1=np.random.randn(D, 1, 3, 3) / np.sqrt(D / 2.),
             W2=np.random.randn(1960, H) / np.sqrt(D / 2.),
             W3=np.random.randn(H, C) / np.sqrt(D / 2.),
             b1=np.zeros((D, 1)),

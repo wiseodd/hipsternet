@@ -41,7 +41,7 @@ def conv_2d(X, kernel, stride=1, padding=1):
 
 
 def maxpool_2d(X, k=2, stride=2):
-    if not is_square(X[0]):
+    if not is_square(X):
         raise Exception('Image must be a square matrix!')
 
     m = X.shape[0]

@@ -2,6 +2,7 @@ import numpy as np
 import hipsternet.utils as util
 import hipsternet.constant as c
 import hipsternet.regularization as reg
+from hipsternet.im2col import *
 
 
 def softmax(x):
@@ -112,13 +113,20 @@ def bn_backward(dout, cache):
     return dX, dgamma, dbeta
 
 
-def conv_forward(l_in, W, b, stride=1, padding=1):
+def conv_forward(X, W, b, stride=1, padding=1):
     cache = W, b, stride, padding
+    n_filters, d_filter, w_filter, h_filter = W.shape
+    n_x, d_x, w_x, h_x = X.shape
+    w_out = (w_x - w_filter + 2 * padding) / stride + 1
+    h_out = (h_x - h_filter + 2 * padding) / stride + 1
 
-    out = np.array([
-        util.conv_2d(l_in, kernel, stride, padding) + bb
-        for kernel, bb in zip(W, b)
-    ])
+    X_cols = im2col_indices(X, w_filter, h_filter, padding=padding, stride=stride)
+    W_cols = W.reshape(n_filters, -1)
+
+    out = W_cols @ X_cols + b
+
+    out = out.reshape(n_filters, n_x, w_out, h_out)
+    out = out.transpose(1, 0, 2, 3)
 
     return out, cache
 
