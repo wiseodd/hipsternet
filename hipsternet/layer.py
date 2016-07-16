@@ -10,8 +10,8 @@ def softmax(x):
     return (e_x.T / e_x.sum(axis=1)).T
 
 
-def fc_forward(l_in, W, b):
-    return l_in @ W + b
+def fc_forward(X, W, b):
+    return X @ W + b
 
 
 def fc_backward(dinput, h, W, input_layer=False, lam=1e-3):
@@ -120,13 +120,14 @@ def conv_forward(X, W, b, stride=1, padding=1):
     w_out = (w_x - w_filter + 2 * padding) / stride + 1
     h_out = (h_x - h_filter + 2 * padding) / stride + 1
 
-    X_cols = im2col_indices(X, w_filter, h_filter, padding=padding, stride=stride)
-    W_cols = W.reshape(n_filters, -1)
+    X_col = im2col_indices(X, w_filter, h_filter, padding=padding, stride=stride)
+    W_col = W.reshape(n_filters, -1)
 
-    out = W_cols @ X_cols + b
+    out = W_col @ X_col + b
+    out = out.reshape(n_filters, w_out, h_out, n_x)
+    out = out.transpose(3, 0, 1, 2)
 
-    out = out.reshape(n_filters, n_x, w_out, h_out)
-    out = out.transpose(1, 0, 2, 3)
+    cache = (X, W, b, stride, padding, X_col)
 
     return out, cache
 
@@ -140,10 +141,24 @@ def conv_backward(dout, cache):
     ])
 
 
-def maxpool_forward(l_in, size=2, stride=2):
-    res = [util.maxpool_2d(h, k=size, stride=stride) for h in l_in]
-    out = np.array([r[0] for r in res])
-    cache = np.array([r[1] for r in res])
+def maxpool_forward(X, size=2, stride=2):
+    out, cache = None, None
+
+    n, d, w, h = X.shape
+    w_out = (w - size) / stride + 1
+    h_out = (h - size) / stride + 1
+
+    if not w_out.is_integer() or not h_out.is_integer():
+        raise Exception('Invalid output dimension!')
+
+    X_col = im2col_indices(X, size, size, padding=0, stride=stride)
+    max_idx = np.argmax(X_col, axis=0)
+
+    out = X_col[max_idx, range(max_idx.size)]
+    out = out.reshape(d, w_out, h_out, n)
+    out = out.transpose(3, 0, 1, 2)
+
+    cache = (X, size, stride, X_col, max_idx)
 
     return out, cache
 
