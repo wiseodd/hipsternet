@@ -5,6 +5,11 @@ Note, things will be added over time, so not all the hipsterest things will be h
 
 ## What's in it?
 
+#### Network Architectures
+
+1. Convolutional Net
+2. Feed Forward Net
+
 #### Optimization algorithms
 
 1. SGD
