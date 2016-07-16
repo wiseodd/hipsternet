@@ -115,16 +115,21 @@ def bn_backward(dout, cache):
 
 def conv_forward(X, W, b, stride=1, padding=1):
     cache = W, b, stride, padding
-    n_filters, d_filter, w_filter, h_filter = W.shape
-    n_x, d_x, w_x, h_x = X.shape
-    w_out = (w_x - w_filter + 2 * padding) / stride + 1
+    n_filters, d_filter, h_filter, w_filter = W.shape
+    n_x, d_x, h_x, w_x = X.shape
     h_out = (h_x - h_filter + 2 * padding) / stride + 1
+    w_out = (w_x - w_filter + 2 * padding) / stride + 1
 
-    X_col = im2col_indices(X, w_filter, h_filter, padding=padding, stride=stride)
+    if not h_out.is_integer() or not w_out.is_integer():
+        raise Exception('Invalid output dimension!')
+
+    h_out, w_out = int(h_out), int(w_out)
+
+    X_col = im2col_indices(X, h_filter, w_filter, padding=padding, stride=stride)
     W_col = W.reshape(n_filters, -1)
 
-    out = W_col @ X_col + b
-    out = out.reshape(n_filters, w_out, h_out, n_x)
+    out = W_col @ X_col
+    out = out.reshape(n_filters, h_out, w_out, n_x)
     out = out.transpose(3, 0, 1, 2)
 
     cache = (X, W, b, stride, padding, X_col)
@@ -133,29 +138,39 @@ def conv_forward(X, W, b, stride=1, padding=1):
 
 
 def conv_backward(dout, cache):
-    W, b, stride, padding = cache
+    X, W, b, stride, padding, X_col = cache
+    n_filter, d_filter, h_filter, w_filter = W.shape
 
-    return np.array([
-        util.conv_2d(d, kernel.T, stride, padding) + bb
-        for d, kernel, bb, in zip(dout, W, b)
-    ])
+    db = np.sum(dout, axis=(0, 2, 3))
+    db = db.reshape(n_filter, -1)
+
+    dout_reshaped = dout.transpose(1, 2, 3, 0).reshape(n_filter, -1)
+    dW = dout_reshaped @ X_col.T
+    dW = dW.reshape(W.shape)
+
+    W_reshape = W.reshape(n_filter, -1)
+    dX_col = W_reshape.T @ dout_reshaped
+    dX = col2im_indices(dX_col, X.shape, h_filter, w_filter, padding=padding, stride=stride)
+
+    return dX, dW, db
 
 
 def maxpool_forward(X, size=2, stride=2):
-    out, cache = None, None
-
-    n, d, w, h = X.shape
-    w_out = (w - size) / stride + 1
+    n, d, h, w = X.shape
     h_out = (h - size) / stride + 1
+    w_out = (w - size) / stride + 1
 
     if not w_out.is_integer() or not h_out.is_integer():
         raise Exception('Invalid output dimension!')
 
-    X_col = im2col_indices(X, size, size, padding=0, stride=stride)
+    h_out, w_out = int(h_out), int(w_out)
+
+    X_reshaped = X.reshape(n * d, 1, h, w)
+    X_col = im2col_indices(X_reshaped, size, size, padding=0, stride=stride)
     max_idx = np.argmax(X_col, axis=0)
 
     out = X_col[max_idx, range(max_idx.size)]
-    out = out.reshape(d, w_out, h_out, n)
+    out = out.reshape(d, h_out, w_out, n)
     out = out.transpose(3, 0, 1, 2)
 
     cache = (X, size, stride, X_col, max_idx)
@@ -164,18 +179,14 @@ def maxpool_forward(X, size=2, stride=2):
 
 
 def maxpool_backward(dout, cache):
-    idxs, h = cache
-    din = np.zeros_like(h)
+    X, size, stride, X_col, max_idx = cache
+    n, d, w, h = X.shape
 
-    print(din.shape, dout.shape)
+    dX_col = np.zeros_like(X_col)
+    dout_flat = dout.transpose(2, 3, 0, 1).ravel()
 
-    for i in range(len(din)):
-        dout_flat = dout[i].ravel()
+    dX_col[max_idx, range(max_idx.size)] = dout_flat
+    dX = col2im_indices(dX_col, (n * d, 1, h, w), size, size, padding=0, stride=stride)
+    dX = dX.reshape(X.shape)
 
-        row, col, _ = idxs[i].shape
-        cache_flat = idxs[i].reshape(row * col, -1)
-
-        for d, c in zip(dout_flat, cache_flat):
-            din[i, c] = d
-
-    return din
+    return dX

@@ -196,14 +196,14 @@ class ConvNet(NeuralNet):
         dh3 = self.backward_nonlin(dh3, h3)
 
         dh2, dW2, db2 = l.fc_backward(dh3, h2, self.model['W2'], lam=self.lam)
+        dh2 = dh2.ravel().reshape(hpool.shape)
 
         # Pool-1
-        dh2 = dh2.reshape(hpool.shape)
-        dpool = l.maxpool_backward(dh2, (hpool_cache, h1))
+        dpool = l.maxpool_backward(dh2, hpool_cache)
+        dpool = self.backward_nonlin(dpool, h1)
 
         # Conv-1
-        # _, dW1, db1 = l.conv_backward(dpool, h1_cache)
-        dW1, db1 = np.zeros_like(self.model['W1'], self.model['b1'])
+        dX, dW1, db1 = l.conv_backward(dpool, h1_cache)
 
         grad = dict(
             W1=dW1, W2=dW2, W3=dW3, b1=db1, b2=db2, b3=db3
@@ -214,8 +214,8 @@ class ConvNet(NeuralNet):
     def _init_model(self, D, C, H):
         self.model = dict(
             W1=np.random.randn(D, 1, 3, 3) / np.sqrt(D / 2.),
-            W2=np.random.randn(1960, H) / np.sqrt(D / 2.),
-            W3=np.random.randn(H, C) / np.sqrt(D / 2.),
+            W2=np.random.randn(9800, H) / np.sqrt(9800 / 2.),
+            W3=np.random.randn(H, C) / np.sqrt(H / 2.),
             b1=np.zeros((D, 1)),
             b2=np.zeros((1, H)),
             b3=np.zeros((1, C))
