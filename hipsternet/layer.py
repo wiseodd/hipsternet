@@ -5,71 +5,77 @@ import hipsternet.regularization as reg
 from hipsternet.im2col import *
 
 
-def softmax(x):
-    e_x = np.exp((x.T - np.max(x, axis=1)).T)
-    return (e_x.T / e_x.sum(axis=1)).T
-
-
 def fc_forward(X, W, b):
-    return X @ W + b
+    out = X @ W + b
+    cache = (W, X)
+    return out, cache
 
 
-def fc_backward(dinput, h, W, input_layer=False, lam=1e-3):
-    dW = h.T @ dinput
-    dW += reg.dl2_reg(W, lam)
-    db = np.sum(dinput, axis=0)
+def fc_backward(dout, cache):
+    W, h = cache
 
-    dh = None
+    dW = h.T @ dout
+    db = np.sum(dout, axis=0)
+    dX = dout @ W.T
 
-    if not input_layer:
-        dh = dinput @ W.T
-
-    return dh, dW, db
+    return dX, dW, db
 
 
-def relu_forward(h):
-    return np.maximum(h, 0)
+def relu_forward(X):
+    out = np.maximum(X, 0)
+    cache = X
+    return out, cache
 
 
-def relu_backward(dh, h):
-    out = dh.copy()
-    out[h <= 0] = 0
-    return out
+def relu_backward(dout, cache):
+    dX = dout.copy()
+    dX[cache <= 0] = 0
+    return dX
 
 
-def lrelu_forward(h, a=1e-3):
-    return np.maximum(a * h, h)
+def lrelu_forward(X, a=1e-3):
+    out = np.maximum(a * X, X)
+    cache = (X, a)
+    return out, cache
 
 
-def lrelu_backward(dh, h, a=1e-3):
-    out = dh.copy()
-    out[h < 0] *= a
-    return out
+def lrelu_backward(dout, cache):
+    X, a = cache
+    dX = dout.copy()
+    dX[X < 0] *= a
+    return dX
 
 
-def sigmoid_forward(h):
-    return 1. / np.log(1 + np.exp(-h))
+def sigmoid_forward(X):
+    out = util.sigmoid(X)
+    return out, None
 
 
-def sigmoid_backward(dh, cache=None):
-    return sigmoid_forward(dh) * (1 - sigmoid_forward(dh))
+def sigmoid_backward(dout, cache):
+    return util.sigmoid(dout) * (1 - util.sigmoid(dout))
 
 
-def tanh_forward(h):
-    return np.tanh(h)
+def tanh_forward(X):
+    out = np.tanh(X)
+    cache = X
+    return out, cache
 
 
-def tanh_backward(dh, cache=None):
-    return 1 - np.tanh(dh)**2
+def tanh_backward(dout, cache):
+    dX = 1 - np.tanh(dout)**2
+    return dX
 
 
-def dropout_forward(h, p_dropout):
-    u = np.random.binomial(1, p_dropout, size=h.shape) / p_dropout
-    return h * u, u
+def dropout_forward(X, p_dropout):
+    u = np.random.binomial(1, p_dropout, size=X.shape) / p_dropout
+    out = X * u
+    cache = u
+    return out, cache
 
 
-def dropout_backward(dh, dropout_mask):
-    return dh * dropout_mask
+def dropout_backward(dout, cache):
+    dX = dout * cache
+    return dX
 
 
 def bn_forward(X, gamma, beta, cache, momentum=.9, train=True):

@@ -1,6 +1,5 @@
 import numpy as np
 import hipsternet.regularization as reg
-import hipsternet.layer as l
 import hipsternet.utils as util
 
 
@@ -22,7 +21,7 @@ def regularization(model, reg_type='l2', lam=1e-3):
 def cross_entropy(model, y_pred, y_train, lam=1e-3):
     m = y_pred.shape[0]
 
-    prob = l.softmax(y_pred)
+    prob = util.softmax(y_pred)
     log_like = -np.log(prob[range(m), y_train])
 
     data_loss = np.sum(log_like) / m
@@ -34,7 +33,7 @@ def cross_entropy(model, y_pred, y_train, lam=1e-3):
 def dcross_entropy(y_pred, y_train):
     m = y_pred.shape[0]
 
-    grad_y = l.softmax(y_pred)
+    grad_y = util.softmax(y_pred)
     grad_y[range(m), y_train] -= 1.
     grad_y /= m
 

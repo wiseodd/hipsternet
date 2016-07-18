@@ -1,6 +1,8 @@
 import numpy as np
 import hipsternet.loss as loss_fun
 import hipsternet.layer as l
+import hipsternet.regularization as reg
+import hipsternet.utils as util
 
 
 class NeuralNet(object):
@@ -58,7 +60,7 @@ class NeuralNet(object):
 
     def predict_proba(self, X):
         score, _ = self.forward(X, False)
-        return l.softmax(score)
+        return util.softmax(score)
 
     def predict(self, X):
         return np.argmax(self.predict_proba(X), axis=1)
@@ -86,10 +88,10 @@ class FeedForwardNet(NeuralNet):
         bn1_cache, bn2_cache = None, None
 
         # First layer
-        h1 = l.fc_forward(X, self.model['W1'], self.model['b1'])
+        h1, h1_cache = l.fc_forward(X, self.model['W1'], self.model['b1'])
         bn1_cache = (self.bn_caches['bn1_mean'], self.bn_caches['bn1_var'])
         h1, bn1_cache, run_mean, run_var = l.bn_forward(h1, gamma1, beta1, bn1_cache, train=train)
-        h1 = self.forward_nonlin(h1)
+        h1, nl_cache1 = self.forward_nonlin(h1)
 
         self.bn_caches['bn1_mean'], self.bn_caches['bn1_var'] = run_mean, run_var
 
@@ -97,10 +99,10 @@ class FeedForwardNet(NeuralNet):
             h1, u1 = l.dropout_forward(h1, self.p_dropout)
 
         # Second layer
-        h2 = l.fc_forward(h1, self.model['W2'], self.model['b2'])
+        h2, h2_cache = l.fc_forward(h1, self.model['W2'], self.model['b2'])
         bn2_cache = (self.bn_caches['bn2_mean'], self.bn_caches['bn2_var'])
         h2, bn2_cache, run_mean, run_var = l.bn_forward(h2, gamma2, beta2, bn2_cache, train=train)
-        h2 = self.forward_nonlin(h2)
+        h2, nl_cache2 = self.forward_nonlin(h2)
 
         self.bn_caches['bn2_mean'], self.bn_caches['bn2_var'] = run_mean, run_var
 
@@ -108,30 +110,35 @@ class FeedForwardNet(NeuralNet):
             h2, u2 = l.dropout_forward(h2, self.p_dropout)
 
         # Third layer
-        score = l.fc_forward(h2, self.model['W3'], self.model['b3'])
+        score, score_cache = l.fc_forward(h2, self.model['W3'], self.model['b3'])
 
-        return score, (X, h1, h2, u1, u2, bn1_cache, bn2_cache)
+        cache = (X, h1_cache, h2_cache, score_cache, nl_cache1, nl_cache2, u1, u2, bn1_cache, bn2_cache)
+
+        return score, cache
 
     def backward(self, y_pred, y_train, cache):
-        X, h1, h2, u1, u2, bn1_cache, bn2_cache = cache
+        X, h1_cache, h2_cache, score_cache, nl_cache1, nl_cache2, u1, u2, bn1_cache, bn2_cache = cache
 
         # Output layer
         grad_y = self.dloss_funs[self.loss](y_pred, y_train)
 
         # Third layer
-        dh2, dW3, db3 = l.fc_backward(grad_y, h2, self.model['W3'], lam=self.lam)
-        dh2 = self.backward_nonlin(dh2, h2)
+        dh2, dW3, db3 = l.fc_backward(grad_y, score_cache)
+        dW3 += reg.dl2_reg(self.model['W3'], self.lam)
+        dh2 = self.backward_nonlin(dh2, nl_cache2)
         dh2 = l.dropout_backward(dh2, u2)
         dh2, dgamma2, dbeta2 = l.bn_backward(dh2, bn2_cache)
 
         # Second layer
-        dh1, dW2, db2 = l.fc_backward(dh2, h1, self.model['W2'], lam=self.lam)
-        dh1 = self.backward_nonlin(dh1, h1)
+        dh1, dW2, db2 = l.fc_backward(dh2, h2_cache)
+        dW2 += reg.dl2_reg(self.model['W2'], self.lam)
+        dh1 = self.backward_nonlin(dh1, nl_cache1)
         dh1 = l.dropout_backward(dh1, u1)
         dh1, dgamma1, dbeta1 = l.bn_backward(dh1, bn1_cache)
 
         # First layer
-        _, dW1, db1 = l.fc_backward(dh1, X, self.model['W1'], lam=self.lam, input_layer=True)
+        _, dW1, db1 = l.fc_backward(dh1, h1_cache)
+        dW1 += reg.dl2_reg(self.model['W1'], self.lam)
 
         grad = dict(
             W1=dW1, W2=dW2, W3=dW3, b1=db1, b2=db2, b3=db3, gamma1=dgamma1,
@@ -170,39 +177,39 @@ class ConvNet(NeuralNet):
     def forward(self, X, train=False):
         # Conv-1
         h1, h1_cache = l.conv_forward(X, self.model['W1'], self.model['b1'])
-        h1 = l.relu_forward(h1)
+        h1, nl_cache1 = l.relu_forward(h1)
 
         # Pool-1
         hpool, hpool_cache = l.maxpool_forward(h1)
         h2 = hpool.ravel().reshape(-1, 1960)
 
         # FC-7
-        h3 = l.fc_forward(h2, self.model['W2'], self.model['b2'])
-        h3 = l.relu_forward(h3)
+        h3, h3_cache = l.fc_forward(h2, self.model['W2'], self.model['b2'])
+        h3, nl_cache3 = l.relu_forward(h3)
 
         # Softmax
-        score = l.fc_forward(h3, self.model['W3'], self.model['b3'])
+        score, score_cache = l.fc_forward(h3, self.model['W3'], self.model['b3'])
 
-        return score, (X, h1_cache, hpool_cache, h1, hpool, h2, h3)
+        return score, (X, h1_cache, h3_cache, score_cache, hpool_cache, hpool, nl_cache1, nl_cache3)
 
     def backward(self, y_pred, y_train, cache):
-        X, h1_cache, hpool_cache, h1, hpool, h2, h3 = cache
+        X, h1_cache, h3_cache, score_cache, hpool_cache, hpool, nl_cache1, nl_cache3 = cache
 
         # Output layer
         grad_y = self.dloss_funs[self.loss](y_pred, y_train)
 
         # FC-7
-        dh3, dW3, db3 = l.fc_backward(grad_y, h3, self.model['W3'], lam=self.lam)
-        dh3 = self.backward_nonlin(dh3, h3)
+        dh3, dW3, db3 = l.fc_backward(grad_y, score_cache)
+        dh3 = self.backward_nonlin(dh3, nl_cache3)
 
-        dh2, dW2, db2 = l.fc_backward(dh3, h2, self.model['W2'], lam=self.lam)
+        dh2, dW2, db2 = l.fc_backward(dh3, h3_cache)
         dh2 = dh2.ravel().reshape(hpool.shape)
 
         # Pool-1
         dpool = l.maxpool_backward(dh2, hpool_cache)
 
         # Conv-1
-        dh1 = self.backward_nonlin(dpool, h1)
+        dh1 = self.backward_nonlin(dpool, nl_cache1)
         dX, dW1, db1 = l.conv_backward(dh1, h1_cache)
 
         grad = dict(
