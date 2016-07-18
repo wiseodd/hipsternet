@@ -42,6 +42,10 @@ Note, things will be added over time, so not all the hipsterest things will be h
 1. BatchNorm
 2. Xavier weight initialization
 
+#### Pooling
+
+1. Max pooling
+2. Average pooling
 
 ## How to run this?
 
