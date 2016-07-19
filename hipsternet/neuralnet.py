@@ -194,7 +194,7 @@ class ConvNet(NeuralNet):
 
         # Pool-1
         hpool, hpool_cache = l.maxpool_forward(h1)
-        h2 = hpool.ravel().reshape(-1, 1960)
+        h2 = hpool.ravel().reshape(X.shape[0], -1)
 
         # FC-7
         h3, h3_cache = l.fc_forward(h2, self.model['W2'], self.model['b2'])
