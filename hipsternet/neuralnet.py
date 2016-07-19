@@ -10,13 +10,17 @@ class NeuralNet(object):
     loss_funs = dict(
         cross_ent=loss_fun.cross_entropy,
         hinge=loss_fun.hinge_loss,
-        squared=loss_fun.squared_loss
+        squared=loss_fun.squared_loss,
+        l2_regression=loss_fun.l2_regression,
+        l1_regression=loss_fun.l1_regression
     )
 
     dloss_funs = dict(
         cross_ent=loss_fun.dcross_entropy,
         hinge=loss_fun.dhinge_loss,
-        squared=loss_fun.dsquared_loss
+        squared=loss_fun.dsquared_loss,
+        l2_regression=loss_fun.dl2_regression,
+        l1_regression=loss_fun.dl1_regression
     )
 
     forward_nonlins = dict(
@@ -47,6 +51,10 @@ class NeuralNet(object):
         self.loss = loss
         self.forward_nonlin = NeuralNet.forward_nonlins[nonlin]
         self.backward_nonlin = NeuralNet.backward_nonlins[nonlin]
+        self.mode = 'classification'
+
+        if 'regression' in loss:
+            self.mode = 'regression'
 
     def train_step(self, X_train, y_train):
         """
@@ -63,7 +71,12 @@ class NeuralNet(object):
         return util.softmax(score)
 
     def predict(self, X):
-        return np.argmax(self.predict_proba(X), axis=1)
+        if self.mode == 'classification':
+            return np.argmax(self.predict_proba(X), axis=1)
+        else:
+            score, _ = self.forward(X, False)
+            y_pred = np.round(score)
+            return y_pred
 
     def forward(self, X, train=False):
         raise NotImplementedError()
