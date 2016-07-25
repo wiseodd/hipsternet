@@ -12,8 +12,11 @@ def regularization(model, reg_type='l2', lam=1e-3):
     if reg_type not in reg_types.keys():
         raise Exception('Regularization type must be either "l1" or "l2"!')
 
-    W1, W2, W3 = model['W1'], model['W2'], model['W3']
-    reg_loss = reg.l2_reg(W1, lam) + reg.l2_reg(W2, lam) + reg.l2_reg(W3, lam)
+    reg_loss = np.sum([
+        reg_types[reg_type](model[k], lam)
+        for k in model.keys()
+        if k.startswith('W')
+    ])
 
     return reg_loss
 
