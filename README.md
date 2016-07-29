@@ -24,6 +24,8 @@ Note, things will be added over time, so not all the hipsterest things will be h
 1. Cross Entropy
 2. Hinge Loss
 3. Squared Loss
+4. L1 Regression
+5. L2 Regression
 
 #### Regularization
 
