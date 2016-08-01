@@ -240,3 +240,78 @@ class ConvNet(NeuralNet):
             b2=np.zeros((1, H)),
             b3=np.zeros((1, C))
         )
+
+
+class RNN(NeuralNet):
+
+    def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
+        self.H = H
+        super().__init__(D, C, H, lam, p_dropout, loss, nonlin)
+
+    def forward(self, X, h, train=False):
+        Wxh, Whh, Why = self.model['Wxh'], self.model['Whh'], self.model['Why']
+        bh, by = self.model['bh'], self.model['by']
+
+        h, h_cache = l.tanh_forward(X @ Wxh + h @ Whh + bh)
+        y, y_cache = l.fc_forward(h, Why, by)
+
+        cache = (X, h, y, h_cache, y_cache)
+
+        return y, cache
+
+    def backward(self, y_pred, y_train, dh_next, cache):
+        X, h, y, h_cache, y_cache = caches[t]
+
+        # Softmax gradient
+        dy = loss_fun.dcross_entropy(ys[t], y_train[t])
+
+        # Hidden to output gradient
+        dh, dWhy, dby = l.fc_backward(dy, y_cache)
+        dh += dh_next
+
+        # tanh
+        dh = l.tanh_backward(dh, h_cache)
+
+        # Hidden gradient
+        dbh = dh
+        dWxh = h.T @ dh
+        dWhh = dh @ X.T
+        dh_next = dh @ Whh.T
+
+        grad = dict(Wxh=dWxh, Whh=dWhh, Why=dWhy, bh=dbh, by=dby)
+
+        return grad, dh_next
+
+    def train_step(self, X_train, y_train):
+        ys = []
+        caches = []
+        h = np.zeros((1, self.H))
+        loss = 0.
+
+        # Forward
+        for x, y in zip(X_train, y_train):
+            y_pred, cache = self.forward(x, h, train=True)
+            loss += loss_fun.cross_entropy(y_pred, y)
+            ys.append(y_pred)
+            caches.append(cache)
+
+        # Backward
+        dh_next = np.zeros((1, self.H))
+        grads = {k: 0. for k in self.model.keys()}
+
+        for t in reversed(range(len(X_train))):
+            grad, dh_next = self.backward(ys[t], y_train[t], dh_next, caches[t])
+
+            for k in grads.keys():
+                grads[k] += grad[k]
+
+        return grad, loss
+
+    def _init_model(self, D, C, H):
+        self.model = dict(
+            Wxh=np.random.randn(D, H) / np.sqrt(D / 2.),
+            Whh=np.random.randn(H, H) / np.sqrt(H / 2.),
+            Why=np.random.randn(H, D) / np.sqrt(C / 2.),
+            bh=np.zeros((1, H)),
+            by=np.zeros((1, D))
+        )
