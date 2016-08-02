@@ -32,8 +32,11 @@ def sgd(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter=2000
         grad, loss = nn.train_step(X_mini, y_mini)
 
         if iter % print_after == 0:
-            val_acc = util.accuracy(y_val, nn.predict(X_val))
-            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            if val_set:
+                val_acc = util.accuracy(y_val, nn.predict(X_val))
+                print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            else:
+                print('Iter-{} loss: {:.4f}'.format(iter, loss))
 
         for layer in grad:
             nn.model[layer] -= alpha * grad[layer]
@@ -57,8 +60,11 @@ def momentum(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter
         grad, loss = nn.train_step(X_mini, y_mini)
 
         if iter % print_after == 0:
-            val_acc = util.accuracy(y_val, nn.predict(X_val))
-            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            if val_set:
+                val_acc = util.accuracy(y_val, nn.predict(X_val))
+                print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            else:
+                print('Iter-{} loss: {:.4f}'.format(iter, loss))
 
         for layer in grad:
             velocity[layer] = gamma * velocity[layer] + alpha * grad[layer]
@@ -85,8 +91,11 @@ def nesterov(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter
         grad, loss = nn_ahead.train_step(X_mini, y_mini)
 
         if iter % print_after == 0:
-            val_acc = util.accuracy(y_val, nn.predict(X_val))
-            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            if val_set:
+                val_acc = util.accuracy(y_val, nn.predict(X_val))
+                print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            else:
+                print('Iter-{} loss: {:.4f}'.format(iter, loss))
 
         for layer in grad:
             velocity[layer] = gamma * velocity[layer] + alpha * grad[layer]
@@ -110,8 +119,11 @@ def adagrad(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter=
         grad, loss = nn.train_step(X_mini, y_mini)
 
         if iter % print_after == 0:
-            val_acc = util.accuracy(y_val, nn.predict(X_val))
-            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            if val_set:
+                val_acc = util.accuracy(y_val, nn.predict(X_val))
+                print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            else:
+                print('Iter-{} loss: {:.4f}'.format(iter, loss))
 
         for k in grad:
             cache[k] += grad[k]**2
@@ -136,8 +148,11 @@ def rmsprop(nn, X_train, y_train, val_set=None, alpha=1e-3, mb_size=256, n_iter=
         grad, loss = nn.train_step(X_mini, y_mini)
 
         if iter % print_after == 0:
-            val_acc = util.accuracy(y_val, nn.predict(X_val))
-            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            if val_set:
+                val_acc = util.accuracy(y_val, nn.predict(X_val))
+                print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            else:
+                print('Iter-{} loss: {:.4f}'.format(iter, loss))
 
         for k in grad:
             cache[k] = util.exp_running_avg(cache[k], grad[k]**2, gamma)
@@ -165,8 +180,11 @@ def adam(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_iter=20
         grad, loss = nn.train_step(X_mini, y_mini)
 
         if iter % print_after == 0:
-            val_acc = util.accuracy(y_val, nn.predict(X_val))
-            print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            if val_set:
+                val_acc = util.accuracy(y_val, nn.predict(X_val))
+                print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, loss, val_acc))
+            else:
+                print('Iter-{} loss: {:.4f}'.format(iter, loss))
 
         for k in grad:
             M[k] = util.exp_running_avg(M[k], grad[k], beta1)

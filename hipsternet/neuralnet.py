@@ -245,6 +245,7 @@ class ConvNet(NeuralNet):
 class RNN(NeuralNet):
 
     def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
+        self.D = D
         self.H = H
         super().__init__(D, C, H, lam, p_dropout, loss, nonlin)
 
@@ -252,18 +253,22 @@ class RNN(NeuralNet):
         Wxh, Whh, Why = self.model['Wxh'], self.model['Whh'], self.model['Why']
         bh, by = self.model['bh'], self.model['by']
 
-        h, h_cache = l.tanh_forward(X @ Wxh + h @ Whh + bh)
+        X_one_hot = np.zeros(self.D)
+        X_one_hot[X] = 1.
+        X_one_hot = X_one_hot.reshape(1, -1)
+
+        h, h_cache = l.tanh_forward(X_one_hot @ Wxh + h @ Whh + bh)
         y, y_cache = l.fc_forward(h, Why, by)
 
-        cache = (X, h, y, h_cache, y_cache)
+        cache = (X_one_hot, Whh, h, y, h_cache, y_cache)
 
         return y, cache
 
     def backward(self, y_pred, y_train, dh_next, cache):
-        X, h, y, h_cache, y_cache = caches[t]
+        X, Whh, h, y, h_cache, y_cache = cache
 
         # Softmax gradient
-        dy = loss_fun.dcross_entropy(ys[t], y_train[t])
+        dy = loss_fun.dcross_entropy(y_pred, y_train)
 
         # Hidden to output gradient
         dh, dWhy, dby = l.fc_backward(dy, y_cache)
@@ -274,8 +279,8 @@ class RNN(NeuralNet):
 
         # Hidden gradient
         dbh = dh
-        dWxh = h.T @ dh
-        dWhh = dh @ X.T
+        dWhh = h.T @ dh
+        dWxh = X.T @ dh
         dh_next = dh @ Whh.T
 
         grad = dict(Wxh=dWxh, Whh=dWhh, Why=dWhy, bh=dbh, by=dby)
@@ -291,9 +296,11 @@ class RNN(NeuralNet):
         # Forward
         for x, y in zip(X_train, y_train):
             y_pred, cache = self.forward(x, h, train=True)
-            loss += loss_fun.cross_entropy(y_pred, y)
+            loss += loss_fun.cross_entropy(self.model, y_pred, y)
             ys.append(y_pred)
             caches.append(cache)
+
+        loss /= X_train.shape[0]
 
         # Backward
         dh_next = np.zeros((1, self.H))
