@@ -48,21 +48,22 @@ def lrelu_backward(dout, cache):
 
 def sigmoid_forward(X):
     out = util.sigmoid(X)
-    return out, None
+    cache = out
+    return out, cache
 
 
 def sigmoid_backward(dout, cache):
-    return util.sigmoid(dout) * (1 - util.sigmoid(dout))
+    return cache * (1. - cache) * dout
 
 
 def tanh_forward(X):
     out = np.tanh(X)
-    cache = X
+    cache = out
     return out, cache
 
 
 def tanh_backward(dout, cache):
-    dX = 1 - np.tanh(dout)**2
+    dX = (1 - cache**2) * dout
     return dX
 
 
