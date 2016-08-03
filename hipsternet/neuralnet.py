@@ -312,7 +312,10 @@ class RNN(NeuralNet):
             for k in grads.keys():
                 grads[k] += grad[k]
 
-        return grad, loss
+        for k, v in grads.items():
+            grads[k] = np.clip(v, -5., 5.)
+
+        return grads, loss
 
     def _init_model(self, D, C, H):
         self.model = dict(
