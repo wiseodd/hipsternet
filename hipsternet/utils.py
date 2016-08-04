@@ -21,4 +21,4 @@ def softmax(X):
 
 
 def sigmoid(X):
-    return 1. / np.log(1 + np.exp(-X))
+    return 1. / (1 + np.exp(-X))
