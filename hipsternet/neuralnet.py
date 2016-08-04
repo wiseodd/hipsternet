@@ -262,7 +262,7 @@ class RNN(NeuralNet):
 
         cache = (X_one_hot, Whh, h, y, h_cache, y_cache)
 
-        return y, cache
+        return y, h, cache
 
     def backward(self, y_pred, y_train, dh_next, cache):
         X, Whh, h, y, h_cache, y_cache = cache
@@ -295,7 +295,7 @@ class RNN(NeuralNet):
 
         # Forward
         for x, y in zip(X_train, y_train):
-            y_pred, cache = self.forward(x, h, train=True)
+            y_pred, h, cache = self.forward(x, h, train=True)
             loss += loss_fun.cross_entropy(self.model, y_pred, y)
             ys.append(y_pred)
             caches.append(cache)
@@ -324,4 +324,126 @@ class RNN(NeuralNet):
             Why=np.random.randn(H, D) / np.sqrt(C / 2.),
             bh=np.zeros((1, H)),
             by=np.zeros((1, D))
+        )
+
+
+class LSTM(NeuralNet):
+
+    def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
+        self.D = D
+        self.H = H
+        super().__init__(D, C, H, lam, p_dropout, loss, nonlin)
+
+    def forward(self, X, h_old, c_old, train=False):
+        m = self.model
+        Wf, Wi, Wc, Wo = m['Wf'], m['Wi'], m['Wc'], m['Wo']
+        bf, bi, bc, bo = m['bf'], m['bi'], m['bc'], m['bo']
+
+        X_one_hot = np.zeros(self.D)
+        X_one_hot[X] = 1.
+        X_one_hot = X_one_hot.reshape(1, -1)
+
+        X = np.column_stack((h_old, X_one_hot))
+
+        hf, hf_cache = l.fc_forward(X, Wf, bf)
+        hf, hf_sigm_cache = l.sigmoid_forward(hf)
+
+        hi, hi_cache = l.fc_forward(X, Wi, bi)
+        hi, hi_sigm_cache = l.sigmoid_forward(hi)
+
+        ho, ho_cache = l.fc_forward(X, Wo, bo)
+        ho, ho_sigm_cache = l.sigmoid_forward(ho)
+
+        hc, hc_cache = l.fc_forward(X, Wc, bc)
+        hc, hc_tanh_cache = l.tanh_forward(hc)
+
+        c = hf * c_old + hi * hc
+        c, c_tanh_cache = l.tanh_forward(c)
+
+        h = ho * c
+
+        cache = (
+            X, hf, hi, ho, hc, hf_cache, hf_sigm_cache, hi_cache, hi_sigm_cache, ho_cache,
+            ho_sigm_cache, hc_cache, hc_tanh_cache, c_old, c, c_tanh_cache
+        )
+
+        return h, c, cache
+
+    def backward(self, y_pred, y_train, dc_next, dh_next, cache):
+        X, hf, hi, ho, hc, hf_cache, hf_sigm_cache, hi_cache, hi_sigm_cache, ho_cache, ho_sigm_cache, hc_cache, hc_tanh_cache, c_old, c, c_tanh_cache = cache
+
+        dy = loss_fun.dcross_entropy(y_pred, y_train)
+
+        dho = c * dy
+        dho = l.sigmoid_backward(dho, ho_sigm_cache)
+        dc = ho * dy
+        dc = l.tanh_backward(dc, c_tanh_cache)
+
+        dhf = c_old * dc
+        dhf = l.sigmoid_backward(dhf, hf_sigm_cache)
+
+        dhi = hc * dc
+        dhi = l.sigmoid_backward(dhi, hi_sigm_cache)
+
+        dhc = hi * dc
+        dhc = l.tanh_backward(dhc, hc_tanh_cache)
+
+        dXo, dWo, dbo = l.fc_backward(dho, ho_cache)
+        dXc, dWc, dbc = l.fc_backward(dhc, hc_cache)
+        dXi, dWi, dbi = l.fc_backward(dhi, hi_cache)
+        dXf, dWf, dbf = l.fc_backward(dhf, hf_cache)
+
+        dX = dXo + dXc + dXi + dXf
+
+        dh_next = dX[0, :self.H].reshape(1, -1)
+        dc_next = dc
+
+        grad = dict(Wf=dWf, Wi=dWi, Wc=dWc, Wo=dWo, bf=dbf, bi=dbi, bc=dbc, bo=dbo)
+
+        return grad, dh_next, dc_next
+
+    def train_step(self, X_train, y_train):
+        hs = []
+        caches = []
+        h = np.zeros((1, self.H))
+        c = np.zeros((1, self.D))
+        loss = 0.
+
+        # Forward
+        for x, y in zip(X_train, y_train):
+            h, c, cache = self.forward(x, h, c, train=True)
+            loss += loss_fun.cross_entropy(self.model, h, y)
+            hs.append(h)
+            caches.append(cache)
+
+        loss /= X_train.shape[0]
+
+        # Backward
+        dh_next = np.zeros((1, self.H))
+        dc_next = np.zeros((1, self.H))
+        grads = {k: 0. for k in self.model.keys()}
+
+        for t in reversed(range(len(X_train))):
+            grad, dh_next, dc_next = self.backward(hs[t], y_train[t], dh_next, dc_next, caches[t])
+
+            for k in grads.keys():
+                grads[k] += grad[k]
+
+        for k, v in grads.items():
+            grads[k] = np.clip(v, -5., 5.)
+
+        return grads, loss
+
+    def _init_model(self, D, C, H):
+        Z = 2 * D
+
+        self.model = dict(
+            Wf=np.random.randn(Z, D) / np.sqrt(Z / 2.),
+            Wi=np.random.randn(Z, D) / np.sqrt(Z / 2.),
+            Wc=np.random.randn(Z, D) / np.sqrt(Z / 2.),
+            Wo=np.random.randn(Z, D) / np.sqrt(Z / 2.),
+            bf=np.zeros((1, D)),
+            bi=np.zeros((1, D)),
+            bc=np.zeros((1, D)),
+            bo=np.zeros((1, D))
         )

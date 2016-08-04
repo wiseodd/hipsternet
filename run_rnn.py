@@ -22,5 +22,5 @@ if __name__ == '__main__':
 
     vocab_size = len(char_to_idx)
 
-    net = nn.RNN(vocab_size, vocab_size, H=64)
-    solver.adam(net, X, y, mb_size=time_step, n_iter=10000)
+    net = nn.LSTM(vocab_size, vocab_size, H=vocab_size)
+    solver.adam(net, X, y, mb_size=time_step, n_iter=5000, print_after=100)
