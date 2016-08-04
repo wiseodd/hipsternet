@@ -9,6 +9,8 @@ Note, things will be added over time, so not all the hipsterest things will be h
 
 1. Convolutional Net
 2. Feed Forward Net
+3. Recurrent Net
+4. LSTM Net
 
 #### Optimization algorithms
 
