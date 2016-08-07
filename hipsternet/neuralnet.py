@@ -287,16 +287,18 @@ class RNN(NeuralNet):
 
         return grad, dh_next
 
-    def train_step(self, X_train, y_train):
+    def train_step(self, X_train, y_train, h=None):
         ys = []
         caches = []
-        h = np.zeros((1, self.H))
         loss = 0.
+
+        if h is None:
+            h = np.zeros((1, self.H))
 
         # Forward
         for x, y in zip(X_train, y_train):
             y_pred, h, cache = self.forward(x, h, train=True)
-            loss += loss_fun.cross_entropy(self.model, y_pred, y)
+            loss += loss_fun.cross_entropy(self.model, y_pred, y, lam=0)
             ys.append(y_pred)
             caches.append(cache)
 
@@ -304,7 +306,7 @@ class RNN(NeuralNet):
 
         # Backward
         dh_next = np.zeros((1, self.H))
-        grads = {k: 0. for k in self.model.keys()}
+        grads = {k: np.zeros_like(v) for k, v in self.model.items()}
 
         for t in reversed(range(len(X_train))):
             grad, dh_next = self.backward(ys[t], y_train[t], dh_next, caches[t])
@@ -315,7 +317,7 @@ class RNN(NeuralNet):
         for k, v in grads.items():
             grads[k] = np.clip(v, -5., 5.)
 
-        return grads, loss
+        return grads, loss, h
 
     def _init_model(self, D, C, H):
         self.model = dict(
@@ -369,7 +371,7 @@ class LSTM(NeuralNet):
 
         return h, c, cache
 
-    def backward(self, y_pred, y_train, dc_next, dh_next, cache):
+    def backward(self, y_pred, y_train, dc_next, cache):
         X, hf, hi, ho, hc, hf_cache, hf_sigm_cache, hi_cache, hi_sigm_cache, ho_cache, ho_sigm_cache, hc_cache, hc_tanh_cache, c_old, c, c_tanh_cache = cache
 
         dy = loss_fun.dcross_entropy(y_pred, y_train)
@@ -378,6 +380,7 @@ class LSTM(NeuralNet):
         dho = l.sigmoid_backward(dho, ho_sigm_cache)
         dc = ho * dy
         dc = l.tanh_backward(dc, c_tanh_cache)
+        dc += dc_next
 
         dhf = c_old * dc
         dhf = l.sigmoid_backward(dhf, hf_sigm_cache)
@@ -395,44 +398,41 @@ class LSTM(NeuralNet):
 
         dX = dXo + dXc + dXi + dXf
 
-        dh_next = dX[0, :self.H].reshape(1, -1)
         dc_next = dc
 
         grad = dict(Wf=dWf, Wi=dWi, Wc=dWc, Wo=dWo, bf=dbf, bi=dbi, bc=dbc, bo=dbo)
 
-        return grad, dh_next, dc_next
+        return grad, dc_next
 
-    def train_step(self, X_train, y_train):
+    def train_step(self, X_train, y_train, h=None):
         hs = []
         caches = []
-        h = np.zeros((1, self.H))
         c = np.zeros((1, self.D))
         loss = 0.
+
+        if h is None:
+            h = np.zeros((1, self.H))
 
         # Forward
         for x, y in zip(X_train, y_train):
             h, c, cache = self.forward(x, h, c, train=True)
-            loss += loss_fun.cross_entropy(self.model, h, y)
+            loss += loss_fun.cross_entropy(self.model, h, y, lam=0)
             hs.append(h)
             caches.append(cache)
 
         loss /= X_train.shape[0]
 
         # Backward
-        dh_next = np.zeros((1, self.H))
         dc_next = np.zeros((1, self.H))
-        grads = {k: 0. for k in self.model.keys()}
+        grads = {k: np.zeros_like(v) for k, v in self.model.items()}
 
         for t in reversed(range(len(X_train))):
-            grad, dh_next, dc_next = self.backward(hs[t], y_train[t], dh_next, dc_next, caches[t])
+            grad, dc_next = self.backward(hs[t], y_train[t], dc_next, caches[t])
 
             for k in grads.keys():
                 grads[k] += grad[k]
 
-        for k, v in grads.items():
-            grads[k] = np.clip(v, -5., 5.)
-
-        return grads, loss
+        return grads, loss, h
 
     def _init_model(self, D, C, H):
         Z = 2 * D

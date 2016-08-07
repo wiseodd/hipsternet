@@ -196,3 +196,51 @@ def adam(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_iter=20
             nn.model[k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + c.eps)
 
     return nn
+
+
+def adam_rnn(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
+    M = {k: np.zeros_like(v) for k, v in nn.model.items()}
+    R = {k: np.zeros_like(v) for k, v in nn.model.items()}
+    beta1 = .9
+    beta2 = .999
+
+    minibatches = get_minibatch(X_train, y_train, mb_size)
+
+    if val_set:
+        X_val, y_val = val_set
+
+    idx = 0
+    h = None
+    smooth_loss = -np.log(1.0 / len(set(X_train)))
+
+    for iter in range(1, n_iter + 1):
+        t = iter
+
+        if idx >= len(minibatches):
+            idx = 0
+            h = None
+
+        X_mini, y_mini = minibatches[idx]
+        idx += 1
+
+        grad, loss, h = nn.train_step(X_mini, y_mini, h=h)
+
+        if iter % print_after == 0:
+            smooth_loss = 0.9 * smooth_loss + 0.1 * loss
+
+            if val_set:
+                val_acc = util.accuracy(y_val, nn.predict(X_val))
+                print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, smooth_loss, val_acc))
+            else:
+                print('Iter-{} loss: {:.4f}'.format(iter, smooth_loss))
+
+        for k in grad:
+            M[k] = util.exp_running_avg(M[k], grad[k], beta1)
+            R[k] = util.exp_running_avg(R[k], grad[k]**2, beta2)
+
+            m_k_hat = M[k] / (1. - beta1**(t))
+            r_k_hat = R[k] / (1. - beta2**(t))
+
+            nn.model[k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + c.eps)
+
+    return nn
