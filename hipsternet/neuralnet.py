@@ -244,12 +244,15 @@ class ConvNet(NeuralNet):
 
 class RNN(NeuralNet):
 
-    def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
+    def __init__(self, D, C, H, char2idx, idx2char, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
         self.D = D
         self.H = H
+        self.char2idx = char2idx
+        self.idx2char = idx2char
+        self.vocab_size = len(char2idx)
         super().__init__(D, C, H, lam, p_dropout, loss, nonlin)
 
-    def forward(self, X, h, train=False):
+    def forward(self, X, h, train=True):
         Wxh, Whh, Why = self.model['Wxh'], self.model['Whh'], self.model['Why']
         bh, by = self.model['bh'], self.model['by']
 
@@ -257,15 +260,20 @@ class RNN(NeuralNet):
         X_one_hot[X] = 1.
         X_one_hot = X_one_hot.reshape(1, -1)
 
-        h, h_cache = l.tanh_forward(X_one_hot @ Wxh + h @ Whh + bh)
+        hprev = h.copy()
+
+        h, h_cache = l.tanh_forward(X_one_hot @ Wxh + hprev @ Whh + bh)
         y, y_cache = l.fc_forward(h, Why, by)
 
-        cache = (X_one_hot, Whh, h, y, h_cache, y_cache)
+        cache = (X_one_hot, Whh, h, hprev, y, h_cache, y_cache)
+
+        if not train:
+            y = util.softmax(y)
 
         return y, h, cache
 
     def backward(self, y_pred, y_train, dh_next, cache):
-        X, Whh, h, y, h_cache, y_cache = cache
+        X, Whh, h, hprev, y, h_cache, y_cache = cache
 
         # Softmax gradient
         dy = loss_fun.dcross_entropy(y_pred, y_train)
@@ -273,13 +281,14 @@ class RNN(NeuralNet):
         # Hidden to output gradient
         dh, dWhy, dby = l.fc_backward(dy, y_cache)
         dh += dh_next
+        dby = dby.reshape((1, -1))
 
         # tanh
         dh = l.tanh_backward(dh, h_cache)
 
         # Hidden gradient
         dbh = dh
-        dWhh = h.T @ dh
+        dWhh = hprev.T @ dh
         dWxh = X.T @ dh
         dh_next = dh @ Whh.T
 
@@ -319,6 +328,19 @@ class RNN(NeuralNet):
 
         return grads, loss, h
 
+    def sample(self, X_seed, h, size=100):
+        chars = [self.idx2char[X_seed]]
+        idx_list = list(range(self.vocab_size))
+        X = X_seed
+
+        for _ in range(size - 1):
+            prob, h, _ = self.forward(X, h, train=False)
+            idx = np.random.choice(idx_list, p=prob.ravel())
+            chars.append(self.idx2char[idx])
+            X = idx
+
+        return ''.join(chars)
+
     def _init_model(self, D, C, H):
         self.model = dict(
             Wxh=np.random.randn(D, H) / np.sqrt(D / 2.),
@@ -329,14 +351,17 @@ class RNN(NeuralNet):
         )
 
 
-class LSTM(NeuralNet):
+class LSTM(RNN):
 
-    def __init__(self, D, C, H, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
+    def __init__(self, D, C, H, char2idx, idx2char, lam=1e-3, p_dropout=.8, loss='cross_ent', nonlin='relu'):
         self.D = D
         self.H = H
-        super().__init__(D, C, H, lam, p_dropout, loss, nonlin)
+        self.char2idx = char2idx
+        self.idx2char = idx2char
+        self.vocab_size = len(char2idx)
+        super().__init__(D, C, H, char2idx, idx2char, lam, p_dropout, loss, nonlin)
 
-    def forward(self, X, h_old, c_old, train=False):
+    def forward(self, X, h_old, c_old, train=True):
         m = self.model
         Wf, Wi, Wc, Wo = m['Wf'], m['Wi'], m['Wc'], m['Wo']
         bf, bi, bc, bo = m['bf'], m['bi'], m['bc'], m['bo']
@@ -368,6 +393,10 @@ class LSTM(NeuralNet):
             X, hf, hi, ho, hc, hf_cache, hf_sigm_cache, hi_cache, hi_sigm_cache, ho_cache,
             ho_sigm_cache, hc_cache, hc_tanh_cache, c_old, c, c_tanh_cache
         )
+
+        if not train:
+            y = util.softmax(h)
+            return y, h, c
 
         return h, c, cache
 
@@ -404,14 +433,16 @@ class LSTM(NeuralNet):
 
         return grad, dc_next
 
-    def train_step(self, X_train, y_train, h=None):
+    def train_step(self, X_train, y_train, h=None, c=None):
         hs = []
         caches = []
-        c = np.zeros((1, self.D))
         loss = 0.
 
         if h is None:
             h = np.zeros((1, self.H))
+
+        if c is None:
+            c = np.zeros((1, self.D))
 
         # Forward
         for x, y in zip(X_train, y_train):
@@ -432,7 +463,20 @@ class LSTM(NeuralNet):
             for k in grads.keys():
                 grads[k] += grad[k]
 
-        return grads, loss, h
+        return grads, loss, h, c
+
+    def sample(self, X_seed, h, c, size=100):
+        chars = [self.idx2char[X_seed]]
+        idx_list = list(range(self.vocab_size))
+        X = X_seed
+
+        for _ in range(size - 1):
+            prob, h, c = self.forward(X, h, c, train=False)
+            idx = np.random.choice(idx_list, p=prob.ravel())
+            chars.append(self.idx2char[idx])
+            X = idx
+
+        return ''.join(chars)
 
     def _init_model(self, D, C, H):
         Z = 2 * D

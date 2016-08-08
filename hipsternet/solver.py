@@ -2,13 +2,14 @@ import numpy as np
 import hipsternet.utils as util
 import hipsternet.constant as c
 import copy
-from sklearn.utils import shuffle
+from sklearn.utils import shuffle as skshuffle
 
 
-def get_minibatch(X, y, minibatch_size):
+def get_minibatch(X, y, minibatch_size, shuffle=True):
     minibatches = []
 
-    X, y = shuffle(X, y)
+    if shuffle:
+        X, y = skshuffle(X, y)
 
     for i in range(0, X.shape[0], minibatch_size):
         X_mini = X[i:i + minibatch_size]
@@ -198,19 +199,16 @@ def adam(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_iter=20
     return nn
 
 
-def adam_rnn(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
+def adam_rnn(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
     M = {k: np.zeros_like(v) for k, v in nn.model.items()}
     R = {k: np.zeros_like(v) for k, v in nn.model.items()}
     beta1 = .9
     beta2 = .999
 
-    minibatches = get_minibatch(X_train, y_train, mb_size)
-
-    if val_set:
-        X_val, y_val = val_set
+    minibatches = get_minibatch(X_train, y_train, mb_size, shuffle=False)
 
     idx = 0
-    h = None
+    h = np.zeros((1, nn.H))
     smooth_loss = -np.log(1.0 / len(set(X_train)))
 
     for iter in range(1, n_iter + 1):
@@ -218,21 +216,78 @@ def adam_rnn(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_ite
 
         if idx >= len(minibatches):
             idx = 0
-            h = None
+            h = np.zeros((1, nn.H))
 
         X_mini, y_mini = minibatches[idx]
         idx += 1
 
+        sample = nn.sample(X_mini[0], h, 100)
+
         grad, loss, h = nn.train_step(X_mini, y_mini, h=h)
+        smooth_loss = 0.999 * smooth_loss + 0.001 * loss
 
         if iter % print_after == 0:
-            smooth_loss = 0.9 * smooth_loss + 0.1 * loss
+            print("=========================================================================")
+            print('Iter-{} loss: {:.4f}'.format(iter, smooth_loss))
+            print("=========================================================================")
 
-            if val_set:
-                val_acc = util.accuracy(y_val, nn.predict(X_val))
-                print('Iter-{} loss: {:.4f} validation: {:4f}'.format(iter, smooth_loss, val_acc))
-            else:
-                print('Iter-{} loss: {:.4f}'.format(iter, smooth_loss))
+            print(sample)
+
+            print("=========================================================================")
+            print()
+            print()
+
+        for k in grad:
+            M[k] = util.exp_running_avg(M[k], grad[k], beta1)
+            R[k] = util.exp_running_avg(R[k], grad[k]**2, beta2)
+
+            m_k_hat = M[k] / (1. - beta1**(t))
+            r_k_hat = R[k] / (1. - beta2**(t))
+
+            nn.model[k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + c.eps)
+
+    return nn
+
+
+def adam_lstm(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
+    M = {k: np.zeros_like(v) for k, v in nn.model.items()}
+    R = {k: np.zeros_like(v) for k, v in nn.model.items()}
+    beta1 = .9
+    beta2 = .999
+
+    minibatches = get_minibatch(X_train, y_train, mb_size, shuffle=False)
+
+    idx = 0
+    H = np.zeros((1, nn.H))
+    C = np.zeros((1, nn.D))
+    smooth_loss = -np.log(1.0 / len(set(X_train)))
+
+    for iter in range(1, n_iter + 1):
+        t = iter
+
+        if idx >= len(minibatches):
+            idx = 0
+            H = np.zeros((1, nn.H))
+            C = np.zeros((1, nn.D))
+
+        X_mini, y_mini = minibatches[idx]
+        idx += 1
+
+        sample = nn.sample(X_mini[0], H, C, 100)
+
+        grad, loss, H, C = nn.train_step(X_mini, y_mini, h=H, c=C)
+        smooth_loss = 0.999 * smooth_loss + 0.001 * loss
+
+        if iter % print_after == 0:
+            print("=========================================================================")
+            print('Iter-{} loss: {:.4f}'.format(iter, smooth_loss))
+            print("=========================================================================")
+
+            print(sample)
+
+            print("=========================================================================")
+            print()
+            print()
 
         for k in grad:
             M[k] = util.exp_running_avg(M[k], grad[k], beta1)
