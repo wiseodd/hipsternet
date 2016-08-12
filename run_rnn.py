@@ -4,7 +4,7 @@ import hipsternet.neuralnet as nn
 import hipsternet.solver as solver
 
 
-time_step = 10
+time_step = 25
 
 
 if __name__ == '__main__':
@@ -34,8 +34,8 @@ if __name__ == '__main__':
         net_type = 'lstm'
 
     if net_type == 'lstm':
-        net = nn.LSTM(vocab_size, vocab_size, H=vocab_size, char2idx=char_to_idx, idx2char=idx_to_char)
+        net = nn.LSTM(vocab_size, H=128, char2idx=char_to_idx, idx2char=idx_to_char)
         solver.adam_lstm(net, X, y, alpha=1e-3, mb_size=time_step, n_iter=10000000, print_after=100)
     elif net_type == 'rnn':
-        net = nn.RNN(vocab_size, vocab_size, H=128, char2idx=char_to_idx, idx2char=idx_to_char)
+        net = nn.RNN(vocab_size, H=128, char2idx=char_to_idx, idx2char=idx_to_char)
         solver.adam_rnn(net, X, y, alpha=1e-3, mb_size=time_step, n_iter=10000000, print_after=100)

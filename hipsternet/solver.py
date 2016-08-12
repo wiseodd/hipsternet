@@ -257,8 +257,7 @@ def adam_lstm(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print
     minibatches = get_minibatch(X_train, y_train, mb_size, shuffle=False)
 
     idx = 0
-    H = np.zeros((1, nn.H))
-    C = np.zeros((1, nn.D))
+    state = (np.zeros((1, nn.H)), np.zeros((1, nn.H)))
     smooth_loss = -np.log(1.0 / len(set(X_train)))
 
     for iter in range(1, n_iter + 1):
@@ -266,8 +265,7 @@ def adam_lstm(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print
 
         if idx >= len(minibatches):
             idx = 0
-            H = np.zeros((1, nn.H))
-            C = np.zeros((1, nn.D))
+            state = (np.zeros((1, nn.H)), np.zeros((1, nn.H)))
 
         X_mini, y_mini = minibatches[idx]
         idx += 1
@@ -277,14 +275,14 @@ def adam_lstm(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print
             print('Iter-{} loss: {:.4f}'.format(iter, smooth_loss))
             print("=========================================================================")
 
-            sample = nn.sample(X_mini[0], H, C, 100)
+            sample = nn.sample(X_mini[0], state, 100)
             print(sample)
 
             print("=========================================================================")
             print()
             print()
 
-        grad, loss, H, C = nn.train_step(X_mini, y_mini, h=H, c=C)
+        grad, loss, H, C = nn.train_step(X_mini, y_mini, state)
         smooth_loss = 0.999 * smooth_loss + 0.001 * loss
 
         for k in grad:
