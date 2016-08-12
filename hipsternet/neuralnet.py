@@ -252,6 +252,9 @@ class RNN(NeuralNet):
         self.vocab_size = len(char2idx)
         super().__init__(D, D, H, None, None, loss='cross_ent', nonlin='relu')
 
+    def initial_state(self):
+        return np.zeros((1, self.H))
+
     def forward(self, X, h, train=True):
         Wxh, Whh, Why = self.model['Wxh'], self.model['Whh'], self.model['Why']
         bh, by = self.model['bh'], self.model['by']
@@ -296,13 +299,10 @@ class RNN(NeuralNet):
 
         return grad, dh_next
 
-    def train_step(self, X_train, y_train, h=None):
+    def train_step(self, X_train, y_train, h):
         ys = []
         caches = []
         loss = 0.
-
-        if h is None:
-            h = np.zeros((1, self.H))
 
         # Forward
         for x, y in zip(X_train, y_train):
@@ -355,6 +355,9 @@ class LSTM(RNN):
 
     def __init__(self, D, H, char2idx, idx2char):
         super().__init__(D, H, char2idx, idx2char)
+
+    def initial_state(self):
+        return (np.zeros((1, self.H)), np.zeros((1, self.H)))
 
     def forward(self, X, state, train=True):
         m = self.model
@@ -435,19 +438,10 @@ class LSTM(RNN):
 
         return grad, (dh_next, dc_next)
 
-    def train_step(self, X_train, y_train, state=(None, None)):
+    def train_step(self, X_train, y_train, state):
         y_preds = []
         caches = []
         loss = 0.
-        h, c = state
-
-        if h is None:
-            h = np.zeros((1, self.H))
-
-        if c is None:
-            c = np.zeros((1, self.H))
-
-        state = (h, c)
 
         # Forward
         for x, y_true in zip(X_train, y_train):
@@ -475,7 +469,7 @@ class LSTM(RNN):
         for k, v in grads.items():
             grads[k] = np.clip(v, -5., 5.)
 
-        return grads, loss, h, c
+        return grads, loss, state
 
     def _init_model(self, D, C, H):
         Z = H + D

@@ -199,7 +199,7 @@ def adam(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_iter=20
     return nn
 
 
-def adam_rnn(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
+def adam_rnn(nn, X_train, y_train, initial_state, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
     M = {k: np.zeros_like(v) for k, v in nn.model.items()}
     R = {k: np.zeros_like(v) for k, v in nn.model.items()}
     beta1 = .9
@@ -208,7 +208,7 @@ def adam_rnn(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_
     minibatches = get_minibatch(X_train, y_train, mb_size, shuffle=False)
 
     idx = 0
-    h = np.zeros((1, nn.H))
+    state = initial_state
     smooth_loss = -np.log(1.0 / len(set(X_train)))
 
     for iter in range(1, n_iter + 1):
@@ -216,56 +216,7 @@ def adam_rnn(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_
 
         if idx >= len(minibatches):
             idx = 0
-            h = np.zeros((1, nn.H))
-
-        X_mini, y_mini = minibatches[idx]
-        idx += 1
-
-        if iter % print_after == 0:
-            print("=========================================================================")
-            print('Iter-{} loss: {:.4f}'.format(iter, smooth_loss))
-            print("=========================================================================")
-
-            sample = nn.sample(X_mini[0], h, 100)
-            print(sample)
-
-            print("=========================================================================")
-            print()
-            print()
-
-        grad, loss, h = nn.train_step(X_mini, y_mini, h=h)
-        smooth_loss = 0.999 * smooth_loss + 0.001 * loss
-
-        for k in grad:
-            M[k] = util.exp_running_avg(M[k], grad[k], beta1)
-            R[k] = util.exp_running_avg(R[k], grad[k]**2, beta2)
-
-            m_k_hat = M[k] / (1. - beta1**(t))
-            r_k_hat = R[k] / (1. - beta2**(t))
-
-            nn.model[k] -= alpha * m_k_hat / (np.sqrt(r_k_hat) + c.eps)
-
-    return nn
-
-
-def adam_lstm(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
-    M = {k: np.zeros_like(v) for k, v in nn.model.items()}
-    R = {k: np.zeros_like(v) for k, v in nn.model.items()}
-    beta1 = .9
-    beta2 = .999
-
-    minibatches = get_minibatch(X_train, y_train, mb_size, shuffle=False)
-
-    idx = 0
-    state = (np.zeros((1, nn.H)), np.zeros((1, nn.H)))
-    smooth_loss = -np.log(1.0 / len(set(X_train)))
-
-    for iter in range(1, n_iter + 1):
-        t = iter
-
-        if idx >= len(minibatches):
-            idx = 0
-            state = (np.zeros((1, nn.H)), np.zeros((1, nn.H)))
+            state = initial_state
 
         X_mini, y_mini = minibatches[idx]
         idx += 1
@@ -282,7 +233,7 @@ def adam_lstm(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print
             print()
             print()
 
-        grad, loss, H, C = nn.train_step(X_mini, y_mini, state)
+        grad, loss, state = nn.train_step(X_mini, y_mini, state)
         smooth_loss = 0.999 * smooth_loss + 0.001 * loss
 
         for k in grad:
