@@ -57,7 +57,9 @@ Note, things will be added over time, so not all the hipsterest things will be h
 2. Do `conda env create`
 3. Enter the env `source activate hipsternet`
 3. Do things with the code if you want to
-4. Run `python run_mnist.py {ff|cnn}`; `cnn` for convnet model, `ff` for the feed forward model
+4. To run the example:
+4.1. `python run_mnist.py {ff|cnn}`; `cnn` for convnet model, `ff` for the feed forward model
+4.2. `python run_rnn.py {rnn|lstm}`; `rnn` for vanilla RNN model, `lstm` for LSTM net model
 5. Just close the terminal if you done (or `source deactivate`, not a fan though)
 
 ## What can I do with this?
