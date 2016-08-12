@@ -4,7 +4,7 @@ import hipsternet.neuralnet as nn
 import hipsternet.solver as solver
 
 
-time_step = 25
+time_step = 10
 
 
 if __name__ == '__main__':

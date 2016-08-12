@@ -400,7 +400,7 @@ class LSTM(RNN):
 
         return h, c, cache
 
-    def backward(self, y_pred, y_train, dc_next, cache):
+    def backward(self, y_pred, y_train, dh_next, dc_next, cache):
         X, hf, hi, ho, hc, hf_cache, hf_sigm_cache, hi_cache, hi_sigm_cache, ho_cache, ho_sigm_cache, hc_cache, hc_tanh_cache, c_old, c, c_tanh_cache = cache
 
         dy = loss_fun.dcross_entropy(y_pred, y_train)
@@ -409,7 +409,6 @@ class LSTM(RNN):
         dho = l.sigmoid_backward(dho, ho_sigm_cache)
         dc = ho * dy
         dc = l.tanh_backward(dc, c_tanh_cache)
-        dc += dc_next
 
         dhf = c_old * dc
         dhf = l.sigmoid_backward(dhf, hf_sigm_cache)
@@ -426,12 +425,12 @@ class LSTM(RNN):
         dXf, dWf, dbf = l.fc_backward(dhf, hf_cache)
 
         dX = dXo + dXc + dXi + dXf
-
-        dc_next = dc
+        dh_next = dX[:self.H]
+        dc_next = hf * dc
 
         grad = dict(Wf=dWf, Wi=dWi, Wc=dWc, Wo=dWo, bf=dbf, bi=dbi, bc=dbc, bo=dbo)
 
-        return grad, dc_next
+        return grad, dh_next, dc_next
 
     def train_step(self, X_train, y_train, h=None, c=None):
         hs = []
@@ -454,14 +453,18 @@ class LSTM(RNN):
         loss /= X_train.shape[0]
 
         # Backward
+        dh_next = np.zeros((1, self.H))
         dc_next = np.zeros((1, self.H))
         grads = {k: np.zeros_like(v) for k, v in self.model.items()}
 
-        for t in reversed(range(len(X_train))):
-            grad, dc_next = self.backward(hs[t], y_train[t], dc_next, caches[t])
+        for state, cache, y_true in reversed(list(zip(hs, caches, y_train))):
+            grad, dh_next, dc_next = self.backward(state, y_true, dh_next, dc_next, cache)
 
             for k in grads.keys():
                 grads[k] += grad[k]
+
+        for k, v in grads.items():
+            grads[k] = np.clip(v, -5., 5.)
 
         return grads, loss, h, c
 

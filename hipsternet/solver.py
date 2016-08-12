@@ -221,21 +221,20 @@ def adam_rnn(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_
         X_mini, y_mini = minibatches[idx]
         idx += 1
 
-        sample = nn.sample(X_mini[0], h, 100)
-
-        grad, loss, h = nn.train_step(X_mini, y_mini, h=h)
-        smooth_loss = 0.999 * smooth_loss + 0.001 * loss
-
         if iter % print_after == 0:
             print("=========================================================================")
             print('Iter-{} loss: {:.4f}'.format(iter, smooth_loss))
             print("=========================================================================")
 
+            sample = nn.sample(X_mini[0], h, 100)
             print(sample)
 
             print("=========================================================================")
             print()
             print()
+
+        grad, loss, h = nn.train_step(X_mini, y_mini, h=h)
+        smooth_loss = 0.999 * smooth_loss + 0.001 * loss
 
         for k in grad:
             M[k] = util.exp_running_avg(M[k], grad[k], beta1)
@@ -273,21 +272,20 @@ def adam_lstm(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print
         X_mini, y_mini = minibatches[idx]
         idx += 1
 
-        sample = nn.sample(X_mini[0], H, C, 100)
-
-        grad, loss, H, C = nn.train_step(X_mini, y_mini, h=H, c=C)
-        smooth_loss = 0.999 * smooth_loss + 0.001 * loss
-
         if iter % print_after == 0:
             print("=========================================================================")
             print('Iter-{} loss: {:.4f}'.format(iter, smooth_loss))
             print("=========================================================================")
 
+            sample = nn.sample(X_mini[0], H, C, 100)
             print(sample)
 
             print("=========================================================================")
             print()
             print()
+
+        grad, loss, H, C = nn.train_step(X_mini, y_mini, h=H, c=C)
+        smooth_loss = 0.999 * smooth_loss + 0.001 * loss
 
         for k in grad:
             M[k] = util.exp_running_avg(M[k], grad[k], beta1)
