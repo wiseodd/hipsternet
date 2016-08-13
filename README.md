@@ -11,6 +11,7 @@ Note, things will be added over time, so not all the hipsterest things will be h
 2. Feed Forward Net
 3. Recurrent Net
 4. LSTM Net
+5. GRU Net
 
 #### Optimization algorithms
 
@@ -59,7 +60,7 @@ Note, things will be added over time, so not all the hipsterest things will be h
 4. Do things with the code if you want to
 5. To run the example:
   1. `python run_mnist.py {ff|cnn}`; `cnn` for convnet model, `ff` for the feed forward model
-  2. `python run_rnn.py {rnn|lstm}`; `rnn` for vanilla RNN model, `lstm` for LSTM net model
+  2. `python run_rnn.py {rnn|lstm|gru}`; `rnn` for vanilla RNN model, `lstm` for LSTM net model, `gru` for GRU net model
 6. Just close the terminal if you done (or `source deactivate`, not a fan though)
 
 ## What can I do with this?
