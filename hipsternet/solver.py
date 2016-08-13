@@ -199,7 +199,7 @@ def adam(nn, X_train, y_train, val_set=None, alpha=0.001, mb_size=256, n_iter=20
     return nn
 
 
-def adam_rnn(nn, X_train, y_train, initial_state, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
+def adam_rnn(nn, X_train, y_train, alpha=0.001, mb_size=256, n_iter=2000, print_after=100):
     M = {k: np.zeros_like(v) for k, v in nn.model.items()}
     R = {k: np.zeros_like(v) for k, v in nn.model.items()}
     beta1 = .9
@@ -208,7 +208,7 @@ def adam_rnn(nn, X_train, y_train, initial_state, alpha=0.001, mb_size=256, n_it
     minibatches = get_minibatch(X_train, y_train, mb_size, shuffle=False)
 
     idx = 0
-    state = initial_state
+    state = nn.initial_state()
     smooth_loss = -np.log(1.0 / len(set(X_train)))
 
     for iter in range(1, n_iter + 1):
@@ -216,7 +216,7 @@ def adam_rnn(nn, X_train, y_train, initial_state, alpha=0.001, mb_size=256, n_it
 
         if idx >= len(minibatches):
             idx = 0
-            state = initial_state
+            state = nn.initial_state()
 
         X_mini, y_mini = minibatches[idx]
         idx += 1

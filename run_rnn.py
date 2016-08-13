@@ -46,7 +46,7 @@ if __name__ == '__main__':
         net = nn.GRU(vocab_size, H=H, char2idx=char_to_idx, idx2char=idx_to_char)
 
     solver.adam_rnn(
-        net, X, y, net.initial_state(),
+        net, X, y,
         alpha=alpha,
         mb_size=time_step,
         n_iter=n_iter,
