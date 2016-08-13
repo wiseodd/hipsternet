@@ -537,14 +537,14 @@ class GRU(RNN):
         dh += dh_next
 
         dhh = hz * dh
-        dh_old1 = (1 - hz) * dh
+        dh_old1 = (1. - hz) * dh
         dhz = hh * dh - h_old * dh
 
         dhh = l.tanh_backward(dhh, hh_tanh_cache)
         dX_prime, dWh, dbh = l.fc_backward(dhh, hh_cache)
 
-        dh_prime = dX_prime[:, self.H]
-        dh_old1 = hr * dh_prime
+        dh_prime = dX_prime[:, :self.H]
+        dh_old2 = hr * dh_prime
 
         dhr = h_old * dh_prime
         dhr = l.sigmoid_backward(dhr, hr_sigm_cache)
@@ -554,9 +554,9 @@ class GRU(RNN):
         dXz, dWz, dbz = l.fc_backward(dhz, hz_cache)
 
         dX = dXr + dXz
-        dh_old2 = dX[:, self.H]
+        dh_old3 = dX[:, :self.H]
 
-        dh_next = dh_old1 + dh_old2
+        dh_next = dh_old1 + dh_old2 + dh_old3
 
         grad = dict(Wz=dWz, Wr=dWr, Wh=dWh, Wy=dWy, bz=dbz, br=dbr, bh=dbh, by=dby)
 
