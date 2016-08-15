@@ -32,7 +32,7 @@ if __name__ == '__main__':
     else:
         net_type = 'ff'
 
-    mnist = input_data.read_data_sets('MNIST_data/', one_hot=False)
+    mnist = input_data.read_data_sets('data/MNIST_data/', one_hot=False)
     X_train, y_train = mnist.train.images, mnist.train.labels
     X_val, y_val = mnist.validation.images, mnist.validation.labels
     X_test, y_test = mnist.test.images, mnist.test.labels

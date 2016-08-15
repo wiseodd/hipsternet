@@ -13,7 +13,7 @@ H = 64
 
 
 if __name__ == '__main__':
-    with open('text_data/japan.txt', 'r') as f:
+    with open('data/text_data/japan.txt', 'r') as f:
         txt = f.read()
 
         X = []
