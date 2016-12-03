@@ -81,22 +81,29 @@ def conv_autoencoder(X):
 def contractive_autoencoder(X, lam=1e-3):
     X = X.reshape(X.shape[0], -1)
     M, N = X.shape
+    N_hidden = 64
+    N_batch = 100
 
     inputs = Input(shape=(N,))
-    h = Dense(64, activation='sigmoid', name='encoded')(inputs)
+    h = Dense(N_hidden, activation='sigmoid', name='encoded')(inputs)
     outputs = Dense(N, activation='linear')(h)
 
     model = Model(input=inputs, output=outputs)
 
     def contractive_loss(y_pred, y_true):
         mse = K.mean(K.square(y_true - y_pred), axis=1)
-        W = K.variable(value=model.get_layer('encoded').get_weights()[0])
-        jacobian = (h * (1 - h)) * (K.sum(W, axis=0))
-        contractive = lam * K.sum(K.square(jacobian))
+
+        W = K.variable(value=model.get_layer('encoded').get_weights()[0])  # N x N_hidden
+        W = K.transpose(W)  # N_hidden x N
+        dh = h * (1 - h)  # N_batch x N_hidden
+
+        # N_batch x N_hidden * N_hidden x 1 = N_batch x 1
+        contractive = lam * K.sum(dh**2 * K.sum(W**2, axis=1), axis=1)
+
         return mse + contractive
 
     model.compile(optimizer='adam', loss=contractive_loss)
-    model.fit(X, X, batch_size=64, nb_epoch=5)
+    model.fit(X, X, batch_size=N_batch, nb_epoch=5)
 
     return model
 
