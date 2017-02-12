@@ -7,7 +7,7 @@ import hipsternet.solver as solver
 time_step = 10
 n_iter = 1000000000
 alpha = 1e-3
-print_after = 100
+print_after = 1000
 
 H = 64
 

@@ -413,8 +413,9 @@ class LSTM(RNN):
         dho = c * dh
         dho = l.sigmoid_backward(dho, ho_sigm_cache)
 
-        dc = ho * dh + dc_next
+        dc = ho * dh
         dc = l.tanh_backward(dc, c_tanh_cache)
+        dc = dc + dc_next
 
         dhf = c_old * dc
         dhf = l.sigmoid_backward(dhf, hf_sigm_cache)
